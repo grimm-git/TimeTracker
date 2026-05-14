@@ -1,0 +1,77 @@
+plugins {
+    id 'application'
+    id 'jacoco'
+    id 'org.openjfx.javafxplugin' version '0.1.0'
+    id 'org.beryx.jlink' version '2.25.0'
+//    id 'com.palantir.git-version' version '0.15.0'
+}
+
+//version gitVersion()
+description = 'TimeTracker'
+
+repositories {
+    mavenCentral()
+}
+
+application {
+    mainClass = "TimeTracker.Launcher"
+}
+
+compileJava {
+    options.compilerArgs << '-Xlint:all'
+}
+
+compileTestJava {
+    options.compilerArgs << '-Xlint:all'
+}
+
+javafx {
+    version = "17.0.2"
+    modules = [ 'javafx.controls', 'javafx.fxml' ]
+}
+
+dependencies {
+    testImplementation "org.testfx:testfx-junit5:4.0.16-alpha"
+    testImplementation "org.junit.jupiter:junit-jupiter-api:5.9.3"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.9.3"
+    compileOnly "org.junit.jupiter:junit-jupiter-api:5.9.3:javadoc"
+    compileOnly "org.junit.jupiter:junit-jupiter-engine:5.9.3:javadoc"
+}
+
+// Apply a specific Java toolchain to ease working on different environments.
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+jlink {
+    options = ['--strip-debug', '--compress', '2', '--no-header-files', '--no-man-pages']
+    launcher {
+        name = 'TimeTracker'
+    }
+}
+
+distributions {
+    main {
+        distributionBaseName = 'TimeTracker'
+        contents {
+        }
+    }
+}
+
+tasks.named('test') {
+    // Use JUnit Platform for unit tests.
+    useJUnitPlatform()
+    finalizedBy jacocoTestReport // report is always generated after tests run
+}
+
+jacocoTestReport {
+    dependsOn test // tests are required to run before generating the report
+
+    reports {
+        xml.required = false
+        csv.required = false
+        html.outputLocation = layout.buildDirectory.dir('jacocoHtml')
+    }   
+}

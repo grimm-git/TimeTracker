@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 grimm
+ * Copyright (C) 2026 Matthias Grimm
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,9 +36,15 @@ public final class Defaults
      * be shown in the About window. It is for information only.
      */
     public static final int       APP_VERSION = 0;
-    public static final int       APP_REVISION = 0;
+    public static final int       APP_REVISION = 1;
     public static final String    APP_SUFFIX = "";
-    public static final LocalDate APP_DATE = LocalDate.of(2026, 2, 16);
+    public static final LocalDate APP_DATE = LocalDate.of(2026, 6, 30);
+
+    /**
+     * DB_FILE_NAME is the default file name of the SQLite database. It is used
+     * when no database path is given on the command line.
+     */
+    public static final String    DB_FILE_NAME = "timetracker.db";
    
     public static String getVersionString()
     {

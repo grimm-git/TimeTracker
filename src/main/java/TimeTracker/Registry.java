@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 Matthias Grimm <matthiasgrimm@users.sourceforge.net>
+ * Copyright (C) 2026 Matthias Grimm
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,21 +14,29 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 package TimeTracker;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.sql.SQLException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import TimeTracker.data.Database;
+
 /**
  * Master data container class of the application
  * 
- * @author Matthias Grimm <matthiasgrimm@users.sourceforge.net>
+ * @author Matthias Grimm
  */
 public class Registry
 {
     private static volatile Registry instance = null;   // Singleton object instance 
 
+    private Path dbPath;
+    private Database database;
     private ExecutorService threadExecutor = Executors.newFixedThreadPool(10);
     
     /**
@@ -56,6 +64,7 @@ public class Registry
      */
     private Registry()
     {
+        dbPath = Paths.get(System.getProperty("user.dir"), Defaults.DB_FILE_NAME);
     }
 
     /**
@@ -67,10 +76,61 @@ public class Registry
         try {
             if (!threadExecutor.awaitTermination(200, TimeUnit.MILLISECONDS))
                 threadExecutor.shutdownNow();
-            
+
         } catch (InterruptedException e) {
             threadExecutor.shutdownNow();
         }
+
+        if (database != null) {
+            try {
+                database.close();
+            } catch (SQLException e) {
+                System.err.println("Database could not be closed: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Returns the location of the SQLite database file. This is either the path
+     * given on the command line via the "db" option or the default location.
+     *
+     * @return the database file path
+     */
+    public Path getDatabasePath()
+    {
+        return dbPath;
+    }
+
+    /**
+     * Sets the location of the SQLite database file, e.g. from the "db" command
+     * line option.
+     *
+     * @param dbPath the database file path
+     */
+    public void setDatabasePath(Path dbPath)
+    {
+        this.dbPath = dbPath;
+    }
+
+    /**
+     * Returns the open database handle, or null if the database has not been
+     * opened yet.
+     *
+     * @return the database handle
+     */
+    public Database getDatabase()
+    {
+        return database;
+    }
+
+    /**
+     * Stores the open database handle so it can be accessed application wide.
+     *
+     * @param database the open database handle
+     */
+    public void setDatabase(Database database)
+    {
+        this.database = database;
     }
 
     public ExecutorService getExecutor() { return threadExecutor; }

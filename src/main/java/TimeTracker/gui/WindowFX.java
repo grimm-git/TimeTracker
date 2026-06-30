@@ -85,6 +85,8 @@ public abstract class WindowFX
         if (posX > 0) stage.setX(posX);
         if (posY > 0) stage.setY(posY);
         stage.show();
+        stage.toFront();        // raise above other windows when re-shown
+        stage.requestFocus();
     }
 
     /**

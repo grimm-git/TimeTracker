@@ -32,6 +32,7 @@ javafx {
 
 dependencies {
     implementation "org.xerial:sqlite-jdbc:3.45.3.0"
+    implementation "com.github.kwhat:jnativehook:2.2.2"
 
     testImplementation "org.testfx:testfx-junit5:4.0.16-alpha"
     testImplementation "org.junit.jupiter:junit-jupiter-api:5.9.3"

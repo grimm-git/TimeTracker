@@ -23,7 +23,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 import TimeTracker.Defaults;
+import TimeTracker.Registry;
 import TimeTracker.data.Session;
+import javafx.application.Platform;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.value.ObservableValue;
@@ -69,8 +71,9 @@ extends WindowFX
 
     // Tab View: Config
     @FXML  private TextField cfgDBPath;
-    @FXML  private TextField cfgBreak;
-
+    @FXML  private TextField cfgHotkey;
+    @FXML  private TextField cfgBreaktime;
+    @FXML  private Button btnLearnHotkey;
 
     private final MainWindowData dataModel;
     private final DoubleProperty weekTableBarWidthProperty = new SimpleDoubleProperty();
@@ -95,6 +98,12 @@ extends WindowFX
                 showSuccess(newVal);
             });
      
+        // Configuration
+        Registry Reg = Registry.get();
+        cfgDBPath.setText(Reg.getDatabasePath().toString());
+        cfgHotkey.setText(Reg.getHotkey().toString());
+        cfgBreaktime.setText(String.format("%d",Reg.getBreakTime()));
+        
         // Current Session
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd.MM.yyyy  HH:mm");
         Session current = dataModel.getCurrentSession();
@@ -126,9 +135,8 @@ extends WindowFX
                                     .subtract(2));
 
         tableWeek.setItems(dataModel.getSessionListWeek());
-
     
-       stage.setOnShown(ev -> {
+        stage.setOnShown(ev -> {
             adjustTableWidth(getVerticalScrollbar(tableWeek), weekTableBarWidthProperty);
         });
     }
@@ -150,6 +158,7 @@ extends WindowFX
     protected void handleAction(ActionEvent ev)
     {
         if (ev.getSource() == btnClose) close();
+        if (ev.getSource() == btnLearnHotkey) learnHotkey();
     }
 
     @FXML
@@ -158,6 +167,7 @@ extends WindowFX
         if (ev.getEventType() == KeyEvent.KEY_PRESSED) {
             if (ev.getCode() == KeyCode.ENTER) {
                 if (ev.getSource() == btnClose) close();
+                if (ev.getSource() == btnLearnHotkey) learnHotkey();
             }
         } else if (ev.getEventType() == KeyEvent.KEY_TYPED) {
             String str = ev.getCharacter();
@@ -170,12 +180,17 @@ extends WindowFX
         }
     }
 
+    private void learnHotkey()
+    {
+
+    }
+
     @FXML
     protected void handleMenus(ActionEvent event) throws IOException
     {
         // File Menu
         if (event.getSource() == miExit) {
-            close();
+            Platform.exit();
 
         // Help Menu
         } else if (event.getSource() == miAbout) {

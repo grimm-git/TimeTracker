@@ -29,6 +29,9 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 
+import TimeTracker.Defaults;
+import TimeTracker.GlobalHotkey;
+
 /**
  * Database manages the SQLite database that stores the recorded sessions.
  *
@@ -91,16 +94,22 @@ public class Database
             } catch (java.io.IOException e) {
                 throw new SQLException("Could not create directory for database: " + dbPath, e);
             }
- 
-            createSchema();
         }
+
+        // The schema is created with IF NOT EXISTS on every open, so databases
+        // created by earlier versions gain newly added tables (e.g. config)
+        // transparently.
+        createSchema();
     }
 
     /**
      * Creates the database schema. The sessions table holds one row per
      * recorded session with a start and an end time stamp, both stored as epoch
      * milliseconds (UTC). The index on the start column speeds up date and time
-     * period queries.
+     * period queries. The single-row config table holds the application
+     * configuration; its CHECK constraint pins it to exactly one row (id = 1)
+     * and it is seeded with the default break time and hotkey combination, an
+     * existing configuration being left untouched.
      *
      * @throws SQLException if the schema can not be created
      */
@@ -117,6 +126,20 @@ public class Database
             stmt.execute(
                 "CREATE INDEX IF NOT EXISTS idx_sessions_start "
               + "ON sessions(start)");
+
+            stmt.execute(
+                "CREATE TABLE IF NOT EXISTS config ("
+              + "    id        INTEGER PRIMARY KEY CHECK (id = 1), "
+              + "    breaktime INTEGER NOT NULL, "
+              + "    hotkey    INTEGER NOT NULL"
+              + ")");
+        }
+
+        try (PreparedStatement stmt = dbCNX.prepareStatement(
+                "INSERT OR IGNORE INTO config (id, breaktime, hotkey) VALUES (1, ?, ?)")) {
+            stmt.setInt(1, Defaults.DEFAULT_BREAK_TIME);
+            stmt.setInt(2, GlobalHotkey.DEFAULT_HOTKEY);
+            stmt.executeUpdate();
         }
     }
 
@@ -128,6 +151,82 @@ public class Database
     public Connection getConnection()
     {
         return dbCNX;
+    }
+
+    /**
+     * Immutable snapshot of the application configuration as stored in the
+     * single-row {@code config} table.
+     */
+    public static final class Config
+    {
+        private final int breakTime;
+        private final int hotkeyCombo;
+
+        /**
+         * @param breakTime   the break duration in minutes
+         * @param hotkeyCombo the global hotkey combination in packed form
+         *                    (see {@link GlobalHotkey#packHotkey(int, int)})
+         */
+        public Config(int breakTime, int hotkeyCombo)
+        {
+            this.breakTime = breakTime;
+            this.hotkeyCombo = hotkeyCombo;
+        }
+
+        /** @return the break duration in minutes */
+        public int breakTime()
+        {
+            return breakTime;
+        }
+
+        /** @return the global hotkey combination in packed form */
+        public int hotkeyCombo()
+        {
+            return hotkeyCombo;
+        }
+    }
+
+    /**
+     * Reads the configuration row from the database. As {@link #createSchema()}
+     * seeds the row on every open, a row is normally always present; should it
+     * be missing, the built-in defaults are returned instead.
+     *
+     * @return the stored configuration
+     * @throws SQLException if the configuration can not be read
+     */
+    public Config readConfig() throws SQLException
+    {
+        String sql = "SELECT breaktime, hotkey FROM config WHERE id = 1";
+
+        try (Statement stmt = dbCNX.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            if (!rs.next())
+                return new Config(Defaults.DEFAULT_BREAK_TIME, GlobalHotkey.DEFAULT_HOTKEY);
+
+            return new Config(rs.getInt("breaktime"), rs.getInt("hotkey"));
+        }
+    }
+
+    /**
+     * Writes the configuration back to the single-row config table. The upsert
+     * updates the existing row (id = 1) or, should it be missing, inserts it, so
+     * the configuration is persisted regardless of the prior table state.
+     *
+     * @param config the configuration to store
+     * @throws SQLException if the configuration can not be written
+     */
+    public void writeConfig(Config config) throws SQLException
+    {
+        String sql = "INSERT INTO config (id, breaktime, hotkey) VALUES (1, ?, ?) "
+                   + "ON CONFLICT(id) DO UPDATE SET breaktime = excluded.breaktime, "
+                   + "hotkey = excluded.hotkey";
+
+        try (PreparedStatement stmt = dbCNX.prepareStatement(sql)) {
+            stmt.setInt(1, config.breakTime());
+            stmt.setInt(2, config.hotkeyCombo());
+            stmt.executeUpdate();
+        }
     }
 
     /**

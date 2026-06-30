@@ -35,10 +35,15 @@ public class Registry
 {
     private static volatile Registry instance = null;   // Singleton object instance 
 
-    private Path dbPath;
     private Database database;
+    private GlobalHotkey hotkey;
     private ExecutorService threadExecutor = Executors.newFixedThreadPool(10);
     
+    // Configuration
+    private Path cfgDBPath;
+    private int cfgBreakTime;
+    private GlobalHotkey cfgHotkey;
+
     /**
      * This method is the global access to the Registry object, which is a Singleton
      * 
@@ -64,7 +69,7 @@ public class Registry
      */
     private Registry()
     {
-        dbPath = Paths.get(System.getProperty("user.dir"), Defaults.DB_FILE_NAME);
+        cfgDBPath = Paths.get(System.getProperty("user.dir"), Defaults.DB_FILE_NAME);
     }
 
     /**
@@ -72,6 +77,9 @@ public class Registry
      */
     public void close()
     {
+        if (hotkey != null)
+            hotkey.unregister();
+
         threadExecutor.shutdown();
         try {
             if (!threadExecutor.awaitTermination(200, TimeUnit.MILLISECONDS))
@@ -98,7 +106,7 @@ public class Registry
      */
     public Path getDatabasePath()
     {
-        return dbPath;
+        return cfgDBPath;
     }
 
     /**
@@ -109,7 +117,7 @@ public class Registry
      */
     public void setDatabasePath(Path dbPath)
     {
-        this.dbPath = dbPath;
+        this.cfgDBPath = dbPath;
     }
 
     /**
@@ -124,14 +132,74 @@ public class Registry
     }
 
     /**
-     * Stores the open database handle so it can be accessed application wide.
+     * Stores the open database handle so it can be accessed application wide and
+     * loads the persisted configuration (break time and global hotkey) from it
+     * into the {@code cfgBreakTime} and {@code cfgHotkey} fields. If the
+     * configuration can not be read the built-in defaults are used so the
+     * application stays usable.
      *
      * @param database the open database handle
      */
     public void setDatabase(Database database)
     {
         this.database = database;
+
+        try {
+            Database.Config cfg = database.readConfig();
+            cfgBreakTime = cfg.breakTime();
+            cfgHotkey    = configuredHotkey(cfg.hotkeyCombo());
+
+        } catch (SQLException e) {
+            System.err.println("Configuration could not be read: " + e.getMessage());
+            cfgBreakTime = Defaults.DEFAULT_BREAK_TIME;
+            cfgHotkey    = configuredHotkey(GlobalHotkey.DEFAULT_HOTKEY);
+        }
+    }
+
+    /**
+     * Builds a configuration-only {@link GlobalHotkey} that merely carries the
+     * given packed combination. It has no trigger action and is never
+     * registered; the live, registered hotkey is created separately.
+     *
+     * @param packedCombo the hotkey combination in packed form
+     * @return a hotkey instance holding that combination
+     */
+    private static GlobalHotkey configuredHotkey(int packedCombo)
+    {
+        GlobalHotkey hotkey = new GlobalHotkey(null);
+        hotkey.setHotkey(packedCombo);
+        return hotkey;
+    }
+
+    /**
+     * Returns the configured break duration in minutes.
+     *
+     * @return the break time
+     */
+    public int getBreakTime()
+    {
+        return cfgBreakTime;
+    }
+
+    /**
+     * Returns the configuration-only hotkey carrying the persisted combination.
+     *
+     * @return the configured hotkey
+     */
+    public GlobalHotkey getHotkey()
+    {
+        return cfgHotkey;
     }
 
     public ExecutorService getExecutor() { return threadExecutor; }
+
+    /**
+     * Stores the global hotkey handler so it can be uninstalled on shutdown.
+     *
+     * @param hotkey the registered global hotkey handler
+     */
+    public void setHotkey(GlobalHotkey hotkey)
+    {
+        this.hotkey = hotkey;
+    }
 }

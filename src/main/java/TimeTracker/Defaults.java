@@ -45,7 +45,13 @@ public final class Defaults
      * when no database path is given on the command line.
      */
     public static final String    DB_FILE_NAME = "timetracker.db";
-   
+
+    /**
+     * DEFAULT_BREAK_TIME is the break duration in minutes used to seed the
+     * configuration table when a database is created for the first time.
+     */
+    public static final int       DEFAULT_BREAK_TIME = 0;
+
     public static String getVersionString()
     {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");

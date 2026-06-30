@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.sql.SQLException;
 
+import com.github.kwhat.jnativehook.NativeHookException;
+
 import TimeTracker.data.Database;
 import TimeTracker.gui.MainWindowController;
 import TimeTracker.gui.Notification;
@@ -34,7 +36,6 @@ import javafx.stage.Stage;
 public class Main
 extends Application
 {
-
     /**
      * Runs before the GUI is created. It reads the "db" command line option,
      * which holds the path to the SQLite database file, and stores it in the
@@ -56,6 +57,18 @@ extends Application
     {
         setUserAgentStylesheet(STYLESHEET_MODENA);
 
+        // Closing the main window only hides it; the application keeps running
+        // in the background. Without this, hiding the last visible window would
+        // make JavaFX shut down the runtime and terminate the process.
+        Platform.setImplicitExit(false);
+
+        // Graceful-termination handler: when the operating system asks the
+        // process to quit (SIGTERM on shutdown/logout, SIGINT on Ctrl+C) the JVM
+        // runs this shutdown hook, so the database and worker threads are closed
+        // cleanly. A forced SIGKILL (kill -9) cannot be intercepted.
+        Runtime.getRuntime().addShutdownHook(
+                new Thread(() -> Registry.get().close(), "shutdown-hook"));
+
         // The application can not run without its database, so open it first.
         // On failure the user is informed and the application terminates.
         if (!openDatabase())
@@ -67,6 +80,19 @@ extends Application
         stage.getIcons().add(mw.getImageResource("timetracker_64x64.png"));
         stage.getIcons().add(mw.getImageResource("timetracker_256x256.png"));
         stage.show();
+
+        // Install a system-wide hotkey (CTRL+SHIFT+T) that re-shows the window
+        // even when the application has no focus. Failure to install the native
+        // hook (e.g. on a Wayland session) must not prevent the app from running.
+        GlobalHotkey hotkey = new GlobalHotkey(mw::show);
+        try {
+            hotkey.register();
+            Registry.get().setHotkey(hotkey);
+
+        } catch (NativeHookException e) {
+            Notification.showError("Global hotkey could not be registered.\n" + e.getLocalizedMessage());
+            Platform.exit();
+        }
     }
 
     /**
@@ -97,9 +123,8 @@ extends Application
      */
     public static void main(String[] args)
     {
+        // Cleanup is done by the shutdown hook registered in start(), so it runs
+        // both on a normal exit and when the OS terminates the process.
         launch(args);       // start JavaFX Thread
-        
-        Registry Reg = Registry.get();
-        Reg.close();
     }
 }

@@ -28,6 +28,7 @@ import java.sql.Types;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 
 import TimeTracker.Defaults;
 import TimeTracker.GlobalHotkey;
@@ -257,6 +258,35 @@ public class Database
 
             return new Session(start, end);
         }
+    }
+
+    /**
+     * Reads up to the last ten finished sessions from the database, most recent
+     * first. The current, unfinished session (its end time stamp is NULL) is
+     * excluded, so every returned session has a real end time.
+     *
+     * @return an ArrayList of the last (at most ten) finished sessions, newest
+     *         first; empty if the database holds no finished sessions
+     * @throws SQLException if the sessions can not be read
+     */
+    public ArrayList<Session> getSessionLog() throws SQLException
+    {
+        String sql = "SELECT start, end FROM sessions "
+                   + "WHERE end IS NOT NULL ORDER BY id DESC LIMIT 10";
+
+        ArrayList<Session> sessions = new ArrayList<>();
+
+        try (Statement stmt = dbCNX.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            while (rs.next()) {
+                LocalDateTime start = toLocalDateTime(rs.getLong("start"));
+                LocalDateTime end   = toLocalDateTime(rs.getLong("end"));
+                sessions.add(new Session(start, end));
+            }
+        }
+
+        return sessions;
     }
 
     /**

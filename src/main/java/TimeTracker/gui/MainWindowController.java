@@ -18,11 +18,15 @@
 package TimeTracker.gui;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
+
 import TimeTracker.Defaults;
+import TimeTracker.GlobalHotkey;
 import TimeTracker.Registry;
 import TimeTracker.data.Session;
 import javafx.application.Platform;
@@ -39,6 +43,7 @@ import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleButton;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
@@ -73,10 +78,16 @@ extends WindowFX
     @FXML  private TextField cfgDBPath;
     @FXML  private TextField cfgHotkey;
     @FXML  private TextField cfgBreaktime;
-    @FXML  private Button btnLearnHotkey;
+    @FXML  private ToggleButton btnLearnHotkey;
 
     private final MainWindowData dataModel;
     private final DoubleProperty weekTableBarWidthProperty = new SimpleDoubleProperty();
+
+    /** True while {@link #btnLearnHotkey} is toggled and we record a new combo. */
+    private boolean learningHotkey = false;
+
+    /** Active native-key recorder while learning; null when not learning. */
+    private GlobalHotkey.Learner learner;
 
 
     public MainWindowController(Stage stage) throws IOException
@@ -101,7 +112,7 @@ extends WindowFX
         // Configuration
         Registry Reg = Registry.get();
         cfgDBPath.setText(Reg.getDatabasePath().toString());
-        cfgHotkey.setText(Reg.getHotkey().toString());
+        cfgHotkey.setText(GlobalHotkey.format(Reg.getHotkey()));
         cfgBreaktime.setText(String.format("%d",Reg.getBreakTime()));
         
         // Current Session
@@ -135,7 +146,7 @@ extends WindowFX
                                     .subtract(2));
 
         tableWeek.setItems(dataModel.getSessionListWeek());
-    
+
         stage.setOnShown(ev -> {
             adjustTableWidth(getVerticalScrollbar(tableWeek), weekTableBarWidthProperty);
         });
@@ -157,6 +168,8 @@ extends WindowFX
     @FXML
     protected void handleAction(ActionEvent ev)
     {
+        if (learningHotkey) return;
+
         if (ev.getSource() == btnClose) close();
         if (ev.getSource() == btnLearnHotkey) learnHotkey();
     }
@@ -180,14 +193,100 @@ extends WindowFX
         }
     }
 
+    /**
+     * Handles clicks on the learn toggle button. Toggling it on starts the
+     * recording of a new hotkey; toggling it off again aborts and restores the
+     * currently stored combination.
+     */
     private void learnHotkey()
     {
+        if (btnLearnHotkey.isSelected()) {
+            learningHotkey = true;
+            cfgHotkey.setText("Recording new hotkey…");
+            showMessage("Press a modifier plus a key (ESC to cancel).");
+            learner = new GlobalHotkey.Learner(this::onLearnKey);
+            learner.start();
+        } else {
+            stopLearning();
+        }
+    }
 
+    /**
+     * Leaves learning mode without storing anything and puts the currently
+     * configured combination back into the text field.
+     */
+    private void stopLearning()
+    {
+        learningHotkey = false;
+        btnLearnHotkey.setSelected(false);
+
+        if (learner != null) {
+            learner.stop();
+            learner = null;
+        }
+
+        cfgHotkey.setText(GlobalHotkey.format(Registry.get().getHotkey()));
+        clearMessage();
+    }
+
+    /**
+     * Processes a key press reported by the {@link GlobalHotkey.Learner} while
+     * learning mode is active. Runs on the JavaFX thread. Modifier-only presses
+     * update the preview; ESC cancels; the first non-modifier key completes the
+     * combination (a bare key is accepted only for function keys), which is then
+     * stored, re-targeted on the live hook and printed into {@link #cfgHotkey}.
+     *
+     * @param packedCombo  the pressed combination in packed form
+     * @param modifierOnly true while only modifier keys are held
+     */
+    private void onLearnKey(int packedCombo, boolean modifierOnly)
+    {
+        if (!learningHotkey)
+            return;
+
+        // Wait for the actual key: show the modifiers gathered so far.
+        if (modifierOnly) {
+            cfgHotkey.setText(GlobalHotkey.format(packedCombo) + "…");
+            return;
+        }
+
+        int keyCode   = packedCombo & 0xFFFF;
+        int modifiers = packedCombo >>> 16;
+
+        if (keyCode == NativeKeyEvent.VC_ESCAPE) {
+            stopLearning();
+            return;
+        }
+
+        if (modifiers == 0 && !GlobalHotkey.isFunctionKey(keyCode)) {
+            showError("A hotkey needs at least one modifier");
+            return;   // keep listening
+        }
+
+        // Full combination captured: leave learning mode, then apply it (updates
+        // the config, re-targets the live hook and persists it to the database).
+        learningHotkey = false;
+        btnLearnHotkey.setSelected(false);
+        learner.stop();
+        learner = null;
+
+        try {
+            Registry.get().updateHotkey(packedCombo);
+            cfgHotkey.setText(GlobalHotkey.format(Registry.get().getHotkey()));
+            showSuccess("New hotkey: " + GlobalHotkey.format(Registry.get().getHotkey()));
+
+        } catch (SQLException e) {
+            // The combination is already active; only persisting it failed.
+            cfgHotkey.setText(GlobalHotkey.format(Registry.get().getHotkey()));
+            showError("Hotkey is active but could not be saved: " + e.getLocalizedMessage());
+        }
     }
 
     @FXML
     protected void handleMenus(ActionEvent event) throws IOException
     {
+        if (learningHotkey) return;
+
         // File Menu
         if (event.getSource() == miExit) {
             Platform.exit();
@@ -204,10 +303,13 @@ extends WindowFX
             @Override
             protected void updateItem(LocalDateTime item, boolean empty) {
                 super.updateItem(item, empty);
+                this.setText(null);
+                this.setGraphic(null);
+
+                if (empty || item == null) return;
 
                 DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd.MM.yyyy  HH:mm");
                 this.setText(item.format(fmt));
-                this.setGraphic(null);
             }
         };
         return tableCell;
@@ -218,9 +320,12 @@ extends WindowFX
             @Override
             protected void updateItem(Duration item, boolean empty) {
                 super.updateItem(item, empty);
+                this.setText(null);
+                this.setGraphic(null);
+
+                if (empty || item == null) return;
 
                 this.setText(String.format("%02d:%02d", item.toHours(), item.toMinutesPart()));
-                this.setGraphic(null);
             }
         };
         return tableCell;

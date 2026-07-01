@@ -17,11 +17,14 @@
 
 package TimeTracker;
 
+import java.lang.reflect.Field;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.github.kwhat.jnativehook.GlobalScreen;
 import com.github.kwhat.jnativehook.NativeHookException;
+import com.github.kwhat.jnativehook.NativeInputEvent;
 import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
 import com.github.kwhat.jnativehook.keyboard.NativeKeyListener;
 
@@ -52,9 +55,11 @@ implements NativeKeyListener
     private final Runnable onTrigger;
     private boolean registered = false;
 
-    // Customizable combination, defaulting to CTRL+SHIFT+T.
-    private int keyCode   = NativeKeyEvent.VC_T;
-    private int modifiers = NativeKeyEvent.CTRL_MASK | NativeKeyEvent.SHIFT_MASK;
+    // Customizable combination, defaulting to CTRL+SHIFT+T. Volatile because the
+    // combination may be changed on the JavaFX thread while the native hook
+    // thread reads it in nativeKeyPressed().
+    private volatile int keyCode   = NativeKeyEvent.VC_T;
+    private volatile int modifiers = NativeKeyEvent.CTRL_MASK | NativeKeyEvent.SHIFT_MASK;
 
     /**
      * @param onTrigger action run on the JavaFX thread when the hotkey is
@@ -124,6 +129,25 @@ implements NativeKeyListener
     @Override
     public String toString()
     {
+        return format(getHotkey());
+    }
+
+    /**
+     * Returns a human readable description of a packed combination, with the
+     * modifiers in a fixed order followed by the key, e.g. {@code CTRL + SHIFT + T}.
+     * A combination whose key part is {@link NativeKeyEvent#VC_UNDEFINED} renders
+     * the modifiers only (e.g. {@code CTRL + }), which is handy as a live preview
+     * while the final key has not been pressed yet.
+     *
+     * @param packedCombo the packed key code and modifier mask
+     *                    (see {@link #packHotkey(int, int)})
+     * @return the combination as a display string
+     */
+    public static String format(int packedCombo)
+    {
+        int keyCode   = packedCombo & 0xFFFF;
+        int modifiers = (packedCombo >>> 16) & MOD_MASK;
+
         StringBuilder sb = new StringBuilder();
 
         if ((modifiers & NativeKeyEvent.CTRL_MASK)  != 0) sb.append("CTRL + ");
@@ -131,9 +155,95 @@ implements NativeKeyListener
         if ((modifiers & NativeKeyEvent.ALT_MASK)   != 0) sb.append("ALT + ");
         if ((modifiers & NativeKeyEvent.META_MASK)  != 0) sb.append("META + ");
 
-        sb.append(NativeKeyEvent.getKeyText(keyCode).toUpperCase());
+        if (keyCode != NativeKeyEvent.VC_UNDEFINED)
+            sb.append(NativeKeyEvent.getKeyText(keyCode).toUpperCase());
 
         return sb.toString();
+    }
+
+    /** Native key codes of the function keys F1..F24 (values are not contiguous). */
+    private static final Set<Integer> FUNCTION_KEYS = Set.of(
+            NativeKeyEvent.VC_F1,  NativeKeyEvent.VC_F2,  NativeKeyEvent.VC_F3,  NativeKeyEvent.VC_F4,
+            NativeKeyEvent.VC_F5,  NativeKeyEvent.VC_F6,  NativeKeyEvent.VC_F7,  NativeKeyEvent.VC_F8,
+            NativeKeyEvent.VC_F9,  NativeKeyEvent.VC_F10, NativeKeyEvent.VC_F11, NativeKeyEvent.VC_F12,
+            NativeKeyEvent.VC_F13, NativeKeyEvent.VC_F14, NativeKeyEvent.VC_F15, NativeKeyEvent.VC_F16,
+            NativeKeyEvent.VC_F17, NativeKeyEvent.VC_F18, NativeKeyEvent.VC_F19, NativeKeyEvent.VC_F20,
+            NativeKeyEvent.VC_F21, NativeKeyEvent.VC_F22, NativeKeyEvent.VC_F23, NativeKeyEvent.VC_F24);
+
+    /**
+     * @param nativeKeyCode a {@code NativeKeyEvent.VC_*} key code
+     * @return true if the code denotes one of the function keys F1..F24
+     */
+    public static boolean isFunctionKey(int nativeKeyCode)
+    {
+        return FUNCTION_KEYS.contains(nativeKeyCode);
+    }
+
+    /**
+     * @param nativeKeyCode a {@code NativeKeyEvent.VC_*} key code
+     * @return true if the code denotes a modifier key (Ctrl/Shift/Alt/Meta)
+     */
+    private static boolean isModifierKey(int nativeKeyCode)
+    {
+        return nativeKeyCode == NativeKeyEvent.VC_SHIFT
+            || nativeKeyCode == NativeKeyEvent.VC_CONTROL
+            || nativeKeyCode == NativeKeyEvent.VC_ALT
+            || nativeKeyCode == NativeKeyEvent.VC_META;
+    }
+
+    /**
+     * Callback invoked while a {@link Learner} records a combination. It runs on
+     * the JavaFX Application Thread.
+     */
+    @FunctionalInterface
+    public interface KeyCapture
+    {
+        /**
+         * @param packedCombo the pressed combination in packed form; for a press
+         *        of modifier keys only the key part is {@code VC_UNDEFINED}
+         * @param modifierOnly true while only modifier keys are held (no main key)
+         */
+        void onKey(int packedCombo, boolean modifierOnly);
+    }
+
+    /**
+     * Records a new hotkey directly from the global native key stream (the same
+     * layer that enforces the hotkey), so combinations a window manager grabs
+     * before the application window sees them can still be captured. Each press is
+     * forwarded to the given {@link KeyCapture} on the JavaFX thread.
+     */
+    public static final class Learner
+    implements NativeKeyListener
+    {
+        private final KeyCapture capture;
+
+        public Learner(KeyCapture capture)
+        {
+            this.capture = capture;
+        }
+
+        /** Starts listening on the (already installed) global hook. */
+        public void start()
+        {
+            GlobalScreen.addNativeKeyListener(this);
+        }
+
+        /** Stops listening. Safe to call more than once. */
+        public void stop()
+        {
+            GlobalScreen.removeNativeKeyListener(this);
+        }
+
+        @Override
+        public void nativeKeyPressed(NativeKeyEvent ev)
+        {
+            int code = ev.getKeyCode();
+            int mods = normalize(ev.getModifiers());
+            boolean modifierOnly = isModifierKey(code);
+            int packed = packHotkey(modifierOnly ? NativeKeyEvent.VC_UNDEFINED : code, mods);
+
+            Platform.runLater(() -> capture.onKey(packed, modifierOnly));
+        }
     }
 
     /**
@@ -179,8 +289,34 @@ implements NativeKeyListener
     {
         // Keep this callback cheap: only compare and hand off to the FX thread.
         if (onTrigger != null
-                && ev.getKeyCode() == keyCode && normalize(ev.getModifiers()) == modifiers)
+                && ev.getKeyCode() == keyCode && normalize(ev.getModifiers()) == modifiers) {
+            consume(ev);
             Platform.runLater(onTrigger);
+        }
+    }
+
+    /**
+     * Asks JNativeHook to swallow the event so the keycode is not propagated to
+     * the focused application. Consumption is requested by setting bit
+     * {@code 0x01} of the private {@code reserved} field on {@link
+     * NativeInputEvent}, for which there is no public setter.<p>
+     *
+     * This is honoured on Windows and macOS only. On Linux the underlying
+     * XRecord tap is passive and read-only, so the event still reaches other
+     * applications and this call has no effect (the reflection failure, if any,
+     * is swallowed).
+     *
+     * @param ev the matched event to suppress
+     */
+    private static void consume(NativeKeyEvent ev)
+    {
+        try {
+            Field reserved = NativeInputEvent.class.getDeclaredField("reserved");
+            reserved.setAccessible(true);
+            reserved.setShort(ev, (short) 0x01);
+        } catch (ReflectiveOperationException | SecurityException e) {
+            // Suppression unsupported here; let the event propagate.
+        }
     }
 
     /**

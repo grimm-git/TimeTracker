@@ -12,6 +12,7 @@
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.ColumnConstraints?>
@@ -152,7 +153,7 @@
                         <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0" spacing="4.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
                            <children>
                               <TextField fx:id="cfgHotkey" editable="false" HBox.hgrow="ALWAYS" />
-                              <Button fx:id="btnLearnHotkey" mnemonicParsing="false" onAction="#handleAction" onKeyPressed="#handleKeys">
+                              <ToggleButton fx:id="btnLearnHotkey" mnemonicParsing="false" onAction="#handleAction">
                                  <graphic>
                                     <ImageView fitHeight="16.0" fitWidth="16.0" pickOnBounds="true" preserveRatio="true">
                                        <image>
@@ -160,7 +161,7 @@
                                        </image>
                                     </ImageView>
                                  </graphic>
-                              </Button>
+                              </ToggleButton>
                            </children>
                         </HBox>
                      </children>

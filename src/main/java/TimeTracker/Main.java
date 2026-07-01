@@ -84,10 +84,13 @@ extends Application
         // Install a system-wide hotkey (CTRL+SHIFT+T) that re-shows the window
         // even when the application has no focus. Failure to install the native
         // hook (e.g. on a Wayland session) must not prevent the app from running.
+        Registry Reg = Registry.get();
         GlobalHotkey hotkey = new GlobalHotkey(mw::show);
+        hotkey.setHotkey(Reg.getHotkey());   // use the persisted combo
+
         try {
             hotkey.register();
-            Registry.get().setHotkey(hotkey);
+            Reg.setHotkey(hotkey);
 
         } catch (NativeHookException e) {
             Notification.showError("Global hotkey could not be registered.\n" + e.getLocalizedMessage());
@@ -108,7 +111,7 @@ extends Application
         Registry Reg = Registry.get();
 
         try {
-            Reg.setDatabase(new Database(Reg.getDatabasePath()));
+            Reg.setDbHandle(new Database(Reg.getDatabasePath()));
             return true;
 
         } catch (SQLException e) {

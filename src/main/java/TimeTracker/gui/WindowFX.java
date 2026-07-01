@@ -142,7 +142,7 @@ public abstract class WindowFX
     {
         if (msgLabel != null) {
             msgLabel.setText(msg);
-            msgLabel.setStyle("-fx-text-fill:-fx-negative-color;-fx-font-size:0.8em;");
+            msgLabel.setStyle("-fx-text-fill:-fx-negative-color;-fx-font-size:1.2em;");
             syncTooltip(msg);
         }
     }

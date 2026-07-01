@@ -25,6 +25,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import TimeTracker.data.Database;
+import TimeTracker.data.Session;
 
 /**
  * Master data container class of the application
@@ -35,14 +36,15 @@ public class Registry
 {
     private static volatile Registry instance = null;   // Singleton object instance 
 
-    private Database database;
-    private GlobalHotkey hotkey;
+    private Database dbHandle;
+    private GlobalHotkey hotkey;                 // live, registered global hook
     private ExecutorService threadExecutor = Executors.newFixedThreadPool(10);
-    
+    private Session activeSession;
+
     // Configuration
     private Path cfgDBPath;
     private int cfgBreakTime;
-    private GlobalHotkey cfgHotkey;
+    private int cfgHotkey;                        // configured hotkey in packed form
 
     /**
      * This method is the global access to the Registry object, which is a Singleton
@@ -89,11 +91,14 @@ public class Registry
             threadExecutor.shutdownNow();
         }
 
-        if (database != null) {
+        if (dbHandle != null) {
             try {
-                database.close();
+                activeSession.finishSession();
+                dbHandle.writeSession(activeSession);
+
+                dbHandle.close();
             } catch (SQLException e) {
-                System.err.println("Database could not be closed: " + e.getMessage());
+                System.err.println("Database error: " + e.getMessage());
             }
         }
     }
@@ -126,9 +131,9 @@ public class Registry
      *
      * @return the database handle
      */
-    public Database getDatabase()
+    public Database getDbHandle()
     {
-        return database;
+        return dbHandle;
     }
 
     /**
@@ -138,37 +143,34 @@ public class Registry
      * configuration can not be read the built-in defaults are used so the
      * application stays usable.
      *
-     * @param database the open database handle
+     * @param handle the open database handle
      */
-    public void setDatabase(Database database)
+    public void setDbHandle(Database handle)
     {
-        this.database = database;
+        dbHandle = handle;
 
         try {
-            Database.Config cfg = database.readConfig();
+            activeSession = dbHandle.getLastSession();
+
+            Database.Config cfg = dbHandle.readConfig();
             cfgBreakTime = cfg.breakTime();
-            cfgHotkey    = configuredHotkey(cfg.hotkeyCombo());
+            cfgHotkey    = cfg.hotkeyCombo();
 
         } catch (SQLException e) {
             System.err.println("Configuration could not be read: " + e.getMessage());
             cfgBreakTime = Defaults.DEFAULT_BREAK_TIME;
-            cfgHotkey    = configuredHotkey(GlobalHotkey.DEFAULT_HOTKEY);
+            cfgHotkey    = GlobalHotkey.DEFAULT_HOTKEY;
         }
     }
 
-    /**
-     * Builds a configuration-only {@link GlobalHotkey} that merely carries the
-     * given packed combination. It has no trigger action and is never
-     * registered; the live, registered hotkey is created separately.
-     *
-     * @param packedCombo the hotkey combination in packed form
-     * @return a hotkey instance holding that combination
-     */
-    private static GlobalHotkey configuredHotkey(int packedCombo)
+    public Session getActiveSession()
     {
-        GlobalHotkey hotkey = new GlobalHotkey(null);
-        hotkey.setHotkey(packedCombo);
-        return hotkey;
+        return activeSession;
+    }
+
+    public void setActiveSession(Session active)
+    {
+        activeSession = active;
     }
 
     /**
@@ -182,19 +184,19 @@ public class Registry
     }
 
     /**
-     * Returns the configuration-only hotkey carrying the persisted combination.
+     * Returns the configured global hotkey in packed form.
      *
-     * @return the configured hotkey
+     * @return the configured hotkey combination
+     *         (see {@link GlobalHotkey#packHotkey(int, int)})
      */
-    public GlobalHotkey getHotkey()
+    public int getHotkey()
     {
         return cfgHotkey;
     }
 
-    public ExecutorService getExecutor() { return threadExecutor; }
-
     /**
-     * Stores the global hotkey handler so it can be uninstalled on shutdown.
+     * Stores the live, registered global hook so it can be re-targeted when the
+     * combination changes and uninstalled on shutdown.
      *
      * @param hotkey the registered global hotkey handler
      */
@@ -202,4 +204,32 @@ public class Registry
     {
         this.hotkey = hotkey;
     }
+
+    /**
+     * Applies a newly chosen global hotkey combination. The change is reflected
+     * in three places: the in-memory configuration ({@link #cfgHotkey}), the
+     * live registered hook (so the combination is effective immediately, without
+     * reinstalling the native hook), and the database (so it survives a restart).
+     * <p>
+     * The in-memory and live updates happen first and can not fail; if the
+     * database write fails the combination is still active for the running
+     * session and the {@link SQLException} is propagated so the caller can inform
+     * the user.
+     *
+     * @param packedHotkey the new combination in packed form
+     *                    (see {@link GlobalHotkey#packHotkey(int, int)})
+     * @throws SQLException if the combination could not be persisted
+     */
+    public void updateHotkey(int packedHotkey) throws SQLException
+    {
+        cfgHotkey = packedHotkey;
+
+        if (hotkey != null)
+            hotkey.setHotkey(packedHotkey);
+
+        if (dbHandle != null)
+            dbHandle.writeConfig(new Database.Config(cfgBreakTime, packedHotkey));
+    }
+
+    public ExecutorService getExecutor() { return threadExecutor; }
 }

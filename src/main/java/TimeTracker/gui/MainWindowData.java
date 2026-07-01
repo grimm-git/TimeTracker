@@ -17,14 +17,13 @@
 package TimeTracker.gui;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 
 import TimeTracker.Registry;
 import TimeTracker.data.Database;
 import TimeTracker.data.Session;
 import static TimeTracker.gui.Notification.getDecission;
 import static TimeTracker.gui.Notification.showError;
-import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
@@ -38,7 +37,6 @@ public class MainWindowData
 {
     private final StringProperty errorMsg = new SimpleStringProperty();
     private final StringProperty successMsg = new SimpleStringProperty();
-    private final ObjectProperty<Session> curSession = new SimpleObjectProperty<>();
     
     private final ObservableList<Session> sessionListWeek =  FXCollections.observableArrayList();
 
@@ -46,24 +44,30 @@ public class MainWindowData
     public MainWindowData()
     {
         Registry Reg = Registry.get();
-        Database DBHandle = Reg.getDatabase();
+        Database dbHandle = Reg.getDbHandle();
         int ok;
 
         try {
-            Session current = DBHandle.getLastSession();
-            if (current == null) {
-                current = new Session();
+            Session active = Reg.getActiveSession();
+            if (active == null || active.isSessonFinished()) {
+                active = new Session();
+                dbHandle.writeSession(active);  // write unfinished session
 
-            } else if (!current.isSessonFinished()) {
-                ok = getDecission("Open Session", "What shall we do with the open session?", "Continue", "Start new");
+            } else {  // session is still open
+                ok = getDecission("Open Session", "What shall we do with the session?", "Continue", "Start new one");
                 if (ok == 1) {
-                    current.finishSession();
-                    DBHandle.writeSession(current);
-                    current = new Session();
+                    active.finishSession();
+                    dbHandle.writeSession(active);  // close open session
+                    active = new Session();
+                    dbHandle.writeSession(active);  // write unfinished session
                 }
             }
-            curSession.set(current);
-            
+            Reg.setActiveSession(active);
+    
+            ArrayList<Session> list = dbHandle.getSessionLog();
+            Notification.showInfo(String.format("Anz = %d",list.size()));
+            sessionListWeek.setAll(list);
+    
         } catch (SQLException e) {
             showError("Can't find Session.\n" + e.getLocalizedMessage());
         }        
@@ -72,10 +76,14 @@ public class MainWindowData
 
     public Session getCurrentSession()
     {
-        return curSession.get();
+        Registry Reg = Registry.get();
+        return Reg.getActiveSession();
     }
 
-    public ObservableList<Session> getSessionListWeek() { return sessionListWeek; }
+    public ObservableList<Session> getSessionListWeek()
+    {
+        return sessionListWeek;
+    }
 
 
     // -------------------------------------------------------------------------------- 
@@ -83,6 +91,5 @@ public class MainWindowData
     // -------------------------------------------------------------------------------- 
     public StringProperty errorMsgProperty()    { return errorMsg; }
     public StringProperty successMsgProperty()  { return successMsg; }
-    public ObjectProperty<Session> curSessionProperty()  { return curSession; }
-
+    
 }

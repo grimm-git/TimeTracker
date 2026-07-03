@@ -46,6 +46,17 @@ import javafx.application.Platform;
 public class GlobalHotkey
 implements NativeKeyListener
 {
+    static {
+        // Select our jlink-friendly library locator before GlobalScreen's static
+        // initializer runs (triggered later by registerNativeHook). The stock
+        // DefaultLibraryLocator assumes a file: code source and fails inside a
+        // jlink image; see JNativeHookLibraryLocator. Respect an explicit
+        // override if the user set one on the command line.
+        if (System.getProperty("jnativehook.lib.locator") == null)
+            System.setProperty("jnativehook.lib.locator",
+                    JNativeHookLibraryLocator.class.getName());
+    }
+
     /** Modifier bits this hotkey distinguishes (Ctrl/Shift/Alt/Meta). */
     private static final int MOD_MASK = NativeKeyEvent.CTRL_MASK
                                       | NativeKeyEvent.SHIFT_MASK

@@ -2,11 +2,11 @@ plugins {
     id 'application'
     id 'jacoco'
     id 'org.openjfx.javafxplugin' version '0.1.0'
-    id 'org.beryx.jlink' version '2.25.0'
 //    id 'com.palantir.git-version' version '0.15.0'
 }
 
 //version gitVersion()
+version = '0.5'   // keep in sync with TimeTracker.Defaults.APP_VERSION/APP_REVISION
 description = 'TimeTracker'
 
 repositories {
@@ -33,12 +33,34 @@ javafx {
 dependencies {
     implementation "org.xerial:sqlite-jdbc:3.45.3.0"
     implementation "com.github.kwhat:jnativehook:2.2.2"
+    // sqlite-jdbc's module descriptor has a mandatory 'requires org.slf4j',
+    // so the module graph needs slf4j-api present or resolution/jlink fails.
+    implementation "org.slf4j:slf4j-api:2.0.13"
 
     testImplementation "org.testfx:testfx-junit5:4.0.16-alpha"
     testImplementation "org.junit.jupiter:junit-jupiter-api:5.9.3"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.9.3"
     compileOnly "org.junit.jupiter:junit-jupiter-api:5.9.3:javadoc"
     compileOnly "org.junit.jupiter:junit-jupiter-engine:5.9.3:javadoc"
+}
+
+// JNativeHook encapsulates its bundled native libraries in per-platform packages
+// that no other module can read via the resource API, and its default loader
+// assumes a file: code source (which breaks in a jlink image). So copy those
+// libraries into this module's own resources under jni/<os>/<arch>/, where
+// JNativeHookLibraryLocator can read them regardless of run mode.
+processResources {
+    from(provider {
+        zipTree(configurations.runtimeClasspath.files.find { it.name.startsWith('jnativehook-') })
+    }) {
+        include 'com/github/kwhat/jnativehook/lib/**'
+        includeEmptyDirs = false
+        eachFile { fcd ->
+            // com/github/kwhat/jnativehook/lib/<os>/<arch>/<file>  ->  jni/<os>/<arch>/<file>
+            def tail = (fcd.relativePath.segments as List).drop(5)
+            fcd.relativePath = new RelativePath(true, (['jni'] + tail) as String[])
+        }
+    }
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
@@ -48,11 +70,174 @@ java {
     }
 }
 
-jlink {
-    options = ['--strip-debug', '--compress', '2', '--no-header-files', '--no-man-pages']
-    launcher {
-        name = 'TimeTracker'
+// ---------------------------------------------------------------------------
+//  Self-contained runtime images (jlink)
+//
+//  The org.beryx.jlink plugin does not support Gradle 9 (it calls Gradle APIs
+//  removed in that release), so we drive the JDK's own jlink directly. Every
+//  dependency ships a real module descriptor, so the app jar plus the resolved
+//  modules form a fully modular graph -- no jar-merging needed.
+//
+//  A jlink image is platform specific: it bundles a JVM and JavaFX natives for
+//  one OS. The app bytecode, sqlite-jdbc and jnativehook are platform neutral;
+//  only the JVM and JavaFX differ. To cross-build a Windows image on Linux we
+//  run the host jlink but feed it a Windows JDK's jmods plus the win-classifier
+//  JavaFX jars.
+// ---------------------------------------------------------------------------
+def fxVersion = '17.0.2'
+def fxModules = ['base', 'graphics', 'controls', 'fxml']
+
+configurations {
+    javafxLinux { canBeConsumed = false }
+    javafxWin   { canBeConsumed = false }
+}
+
+dependencies {
+    // List every JavaFX module explicitly and keep the classifier, disabling
+    // transitivity so we don't also pull the classifier-less (native-free)
+    // variants and end up with two copies of e.g. javafx.base on the path.
+    fxModules.each { m ->
+        javafxLinux("org.openjfx:javafx-$m:$fxVersion:linux") { transitive = false }
+        javafxWin  ("org.openjfx:javafx-$m:$fxVersion:win")   { transitive = false }
     }
+}
+
+// Windows JDK 17, downloaded once so the host jlink can cross-target Windows.
+// Offline / air-gapped? Point at an existing one with -PwinJdkJmods=/path/to/jmods.
+def winJdkTag  = 'jdk-17.0.13+11'
+def winJdkUrl  = 'https://github.com/adoptium/temurin17-binaries/releases/download/' +
+                 'jdk-17.0.13%2B11/OpenJDK17U-jdk_x64_windows_hotspot_17.0.13_11.zip'
+def winJdkRoot = layout.buildDirectory.dir('winjdk')
+
+tasks.register('downloadWinJdk') {
+    description = 'Downloads a Windows JDK 17 so jlink can cross-target Windows.'
+    def rootDir = winJdkRoot
+    outputs.dir(rootDir)
+    onlyIf { !providers.gradleProperty('winJdkJmods').present }
+    doLast {
+        def root = rootDir.get().asFile
+        if (new File(root, "$winJdkTag/jmods").isDirectory()) return
+        root.mkdirs()
+        def zip = new File(root, 'winjdk.zip')
+        if (!zip.exists()) {
+            logger.lifecycle "Downloading Windows JDK ($winJdkTag)..."
+            new URL(winJdkUrl).withInputStream { input ->
+                zip.withOutputStream { out -> out << input }
+            }
+        }
+        copy { from zipTree(zip); into root }
+    }
+}
+
+def appJar       = tasks.named('jar').flatMap { it.archiveFile }
+def hostLauncher = javaToolchains.launcherFor(java.toolchain)
+
+// Non-JavaFX runtime modules are platform independent; reused for both images.
+def coreModules = {
+    configurations.runtimeClasspath.files.findAll { !it.name.startsWith('javafx-') }
+}
+
+// Assembles the jlink argument list shared by both image tasks.
+def jlinkArgs = { modulePath, File jmods, File outDir ->
+    def mp = (modulePath*.absolutePath + jmods.absolutePath).join(File.pathSeparator)
+    ['--module-path', mp,
+     '--add-modules', 'TimeTracker',
+     '--launcher', 'TimeTracker=TimeTracker/TimeTracker.Launcher',
+     '--strip-debug', '--no-header-files', '--no-man-pages', '--compress', '2',
+     '--output', outDir.absolutePath]
+}
+
+tasks.register('jlinkImageLinux', Exec) {
+    group = 'distribution'
+    description = 'Builds a self-contained Linux runtime image under build/image/linux.'
+    dependsOn tasks.named('jar')
+    def outDir = layout.buildDirectory.dir('image/linux').get().asFile
+    inputs.files(configurations.runtimeClasspath, configurations.javafxLinux)
+    inputs.file(appJar)
+    outputs.dir(outDir)
+    doFirst {
+        def jdkHome = hostLauncher.get().metadata.installationPath.asFile
+        outDir.deleteDir()   // jlink refuses to write into an existing dir
+        executable = new File(jdkHome, 'bin/jlink').absolutePath
+        args jlinkArgs(coreModules() + configurations.javafxLinux.files + appJar.get().asFile,
+                       new File(jdkHome, 'jmods'), outDir)
+    }
+}
+
+tasks.register('jlinkImageWin', Exec) {
+    group = 'distribution'
+    description = 'Cross-builds a self-contained Windows runtime image under build/image/windows.'
+    dependsOn tasks.named('jar'), tasks.named('downloadWinJdk')
+    def outDir = layout.buildDirectory.dir('image/windows').get().asFile
+    def winJmodsOverride = providers.gradleProperty('winJdkJmods')
+    inputs.files(configurations.runtimeClasspath, configurations.javafxWin)
+    inputs.file(appJar)
+    outputs.dir(outDir)
+    doFirst {
+        def hostJdk  = hostLauncher.get().metadata.installationPath.asFile
+        def winJmods = winJmodsOverride.present
+                ? new File(winJmodsOverride.get())
+                : winJdkRoot.get().dir("$winJdkTag/jmods").asFile
+        if (!winJmods.isDirectory())
+            throw new GradleException("Windows jmods not found at $winJmods")
+        outDir.deleteDir()
+        // Host jlink, but Windows target modules: jlink reads the target OS from
+        // the Windows java.base and emits a bin/TimeTracker.bat launcher.
+        executable = new File(hostJdk, 'bin/jlink').absolutePath
+        args jlinkArgs(coreModules() + configurations.javafxWin.files + appJar.get().asFile,
+                       winJmods, outDir)
+    }
+}
+
+tasks.register('jlinkImages') {
+    group = 'distribution'
+    description = 'Builds both the Linux and Windows runtime images.'
+    dependsOn 'jlinkImageLinux', 'jlinkImageWin'
+}
+
+// Package each runtime image into a versioned, self-contained zip. The image
+// is nested under a TimeTracker-<version> top-level folder so it extracts into
+// its own directory. Gradle preserves the source unix permissions, so the
+// Linux launcher stays executable after unzip.
+tasks.register('distZipLinux', Zip) {
+    group = 'distribution'
+    description = 'Packages the Linux runtime image into build/distributions.'
+    dependsOn 'jlinkImageLinux'
+    def image = layout.buildDirectory.dir('image/linux')
+    // Gradle's Zip normalises file modes to 0644, which would strip the exec
+    // bit jlink set on bin/java and bin/TimeTracker, so restore 0755 for bin/**.
+    from(image) {
+        into "TimeTracker-${project.version}"
+        exclude 'bin/**'
+    }
+    from(image) {
+        into "TimeTracker-${project.version}"
+        include 'bin/**'
+        filePermissions { unix(0755) }
+    }
+    archiveBaseName = 'TimeTracker'
+    archiveVersion = project.version.toString()
+    archiveClassifier = 'linux'
+    destinationDirectory = layout.buildDirectory.dir('distributions')
+}
+
+tasks.register('distZipWin', Zip) {
+    group = 'distribution'
+    description = 'Packages the Windows runtime image into build/distributions.'
+    dependsOn 'jlinkImageWin'
+    from(layout.buildDirectory.dir('image/windows')) {
+        into "TimeTracker-${project.version}"
+    }
+    archiveBaseName = 'TimeTracker'
+    archiveVersion = project.version.toString()
+    archiveClassifier = 'windows'
+    destinationDirectory = layout.buildDirectory.dir('distributions')
+}
+
+tasks.register('distZips') {
+    group = 'distribution'
+    description = 'Packages both the Linux and Windows runtime images into zips.'
+    dependsOn 'distZipLinux', 'distZipWin'
 }
 
 distributions {

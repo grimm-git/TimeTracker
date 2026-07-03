@@ -36,9 +36,9 @@ public final class Defaults
      * be shown in the About window. It is for information only.
      */
     public static final int       APP_VERSION = 0;
-    public static final int       APP_REVISION = 1;
+    public static final int       APP_REVISION = 5;
     public static final String    APP_SUFFIX = "";
-    public static final LocalDate APP_DATE = LocalDate.of(2026, 6, 30);
+    public static final LocalDate APP_DATE = LocalDate.of(2026, 7, 3);
 
     /**
      * DB_FILE_NAME is the default file name of the SQLite database. It is used
@@ -47,10 +47,13 @@ public final class Defaults
     public static final String    DB_FILE_NAME = "timetracker.db";
 
     /**
+     * DEFAULT_FIRST_BREAK is the time in a session that must be elappsed
+     * before the break time is considered.
      * DEFAULT_BREAK_TIME is the break duration in minutes used to seed the
      * configuration table when a database is created for the first time.
      */
-    public static final int       DEFAULT_BREAK_TIME = 0;
+    public static final int       DEFAULT_FIRST_BREAK = 4*60;
+    public static final int       DEFAULT_BREAK_TIME = 45;
 
     public static String getVersionString()
     {

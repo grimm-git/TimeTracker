@@ -19,8 +19,12 @@ package TimeTracker.data;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.util.Locale;
+
+import TimeTracker.Defaults;
+import TimeTracker.Registry;
 
 public class Session
 {
@@ -85,14 +89,57 @@ public class Session
                 .getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
     }
 
+    public String getDate()
+    {
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+        return SessionStart.format(fmt);
+    }
+    public String getTime()
+    {
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("HH:mm");
+        return SessionStart.format(fmt);
+    }
+
     /**
      * Returns the elapsed time between session start and session end as a
      * Duration object.
      *
      * @return the session duration
      */
-    public Duration getWorkTime()
+    public Duration getDuration()
     {
         return Duration.between(SessionStart, SessionEnd);
+    }
+
+    /**
+     * Returns the net working time of the session, i.e. the raw session
+     * duration reduced by the configured break. Sessions shorter than
+     * {@link Defaults#DEFAULT_FIRST_BREAK} minutes are returned unchanged; once
+     * the session reaches that length the configured break time (in minutes) is
+     * subtracted.
+     *
+     * @return the session duration minus the break once it is due
+     */
+    public Duration getWorkTime()
+    {
+        Duration duration = getDuration();
+
+        if (duration.toMinutes() < Defaults.DEFAULT_FIRST_BREAK)
+            return duration;
+
+        return duration.minusMinutes(Registry.get().getBreakTime());
+    }
+
+    /**
+     * Returns the elapsed time between the session start and the current time.
+     * Unlike {@link #getWorkTime()} this ignores the stored end time and is
+     * meant for an open, still running session whose live duration should be
+     * displayed.
+     *
+     * @return the time elapsed since the session started
+     */
+    public Duration getRunningTime()
+    {
+        return Duration.between(SessionStart, LocalDateTime.now());
     }
 }

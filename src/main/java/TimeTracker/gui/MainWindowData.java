@@ -65,7 +65,6 @@ public class MainWindowData
             Reg.setActiveSession(active);
     
             ArrayList<Session> list = dbHandle.getSessionLog();
-            Notification.showInfo(String.format("Anz = %d",list.size()));
             sessionListWeek.setAll(list);
     
         } catch (SQLException e) {

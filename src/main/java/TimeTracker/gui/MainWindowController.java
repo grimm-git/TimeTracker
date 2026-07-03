@@ -29,6 +29,9 @@ import TimeTracker.Defaults;
 import TimeTracker.GlobalHotkey;
 import TimeTracker.Registry;
 import TimeTracker.data.Session;
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
@@ -64,14 +67,17 @@ extends WindowFX
     @FXML  private MenuItem miExit;
     @FXML  private MenuItem miAbout;
 
-    @FXML  private TextField textSessionStart;
-    @FXML  private TextField textSessionEnd;
+    @FXML  private TextField textSessionDay;
+    @FXML  private TextField textSessionDate;
+    @FXML  private TextField textSessionTime;
+    @FXML  private TextField textSessionDur;
 
     // Tab View: Week
     @FXML  private TableView<Session> tableWeek;
     @FXML  private TableColumn<Session, String> colDay;
     @FXML  private TableColumn<Session, LocalDateTime> colStart;
     @FXML  private TableColumn<Session, LocalDateTime> colEnd;
+    @FXML  private TableColumn<Session, Duration> colDuration;
     @FXML  private TableColumn<Session, Duration> colWorkTime;
 
     // Tab View: Config
@@ -88,6 +94,9 @@ extends WindowFX
 
     /** Active native-key recorder while learning; null when not learning. */
     private GlobalHotkey.Learner learner;
+
+    /** Ticks once per second to refresh the running session duration. */
+    private Timeline sessionClock;
 
 
     public MainWindowController(Stage stage) throws IOException
@@ -116,11 +125,16 @@ extends WindowFX
         cfgBreaktime.setText(String.format("%d",Reg.getBreakTime()));
         
         // Current Session
-        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd.MM.yyyy  HH:mm");
         Session current = dataModel.getCurrentSession();
-        textSessionStart.setText(current.getSessionStart().format(fmt));
-        if (current.isSessonFinished())
-            textSessionEnd.setText(current.getSessionEnd().format(fmt));
+        textSessionDay.setText(current.getDayName());
+        textSessionDate.setText(current.getDate());
+        textSessionTime.setText(current.getTime());
+        updateSessionDuration();   // show a value before the first tick
+
+        // Refresh the running duration once per second while the window lives.
+        sessionClock = new Timeline(
+                new KeyFrame(javafx.util.Duration.seconds(1), ev -> updateSessionDuration()));
+        sessionClock.setCycleCount(Animation.INDEFINITE);
 
         // Table Week
         colDay.setCellValueFactory(new PropertyValueFactory<>("DayName"));
@@ -128,11 +142,15 @@ extends WindowFX
 
         colStart.setCellValueFactory(new PropertyValueFactory<>("SessionStart"));
         colStart.setCellFactory(formatDateTime);
-        colStart.getStyleClass().add("column-align-right");
+        colStart.getStyleClass().add("column-align-left");
 
         colEnd.setCellValueFactory(new PropertyValueFactory<>("SessionEnd"));
         colEnd.setCellFactory(formatDateTime);
-        colEnd.getStyleClass().add("column-align-right");
+        colEnd.getStyleClass().add("column-align-left");
+
+        colDuration.setCellValueFactory(new PropertyValueFactory<>("Duration"));
+        colDuration.setCellFactory(formatDuration);
+        colDuration.getStyleClass().add("column-align-center");
 
         colWorkTime.setCellValueFactory(new PropertyValueFactory<>("WorkTime"));
         colWorkTime.setCellFactory(formatDuration);
@@ -142,6 +160,7 @@ extends WindowFX
                                     .subtract(colStart.widthProperty())
                                     .subtract(colEnd.widthProperty())
                                     .subtract(colDay.widthProperty())
+                                    .subtract(colDuration.widthProperty())
                                     .subtract(weekTableBarWidthProperty)
                                     .subtract(2));
 
@@ -149,7 +168,22 @@ extends WindowFX
 
         stage.setOnShown(ev -> {
             adjustTableWidth(getVerticalScrollbar(tableWeek), weekTableBarWidthProperty);
+            sessionClock.play();
         });
+        stage.setOnHidden(ev -> sessionClock.stop());
+    }
+
+    /**
+     * Recomputes the elapsed time of the currently active session and writes it
+     * into {@link #textSessionDur} as HH:MM. Always reads the current session
+     * from the data model so it follows a session switch automatically. Runs on
+     * the JavaFX application thread (invoked by the {@link #sessionClock}).
+     */
+    private void updateSessionDuration()
+    {
+        Duration elapsed = dataModel.getCurrentSession().getRunningTime();
+        textSessionDur.setText(String.format("%02d:%02d",
+                elapsed.toHours(), elapsed.toMinutesPart()));
     }
 
     private void adjustTableWidth(ScrollBar bar, DoubleProperty width)

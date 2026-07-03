@@ -26,9 +26,9 @@ import java.time.format.DateTimeFormatter;
 import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
 
 import TimeTracker.Defaults;
-import TimeTracker.GlobalHotkey;
 import TimeTracker.Registry;
 import TimeTracker.data.Session;
+import TimeTracker.util.GlobalHotkey;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;

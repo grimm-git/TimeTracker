@@ -15,7 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package TimeTracker;
+package TimeTracker.util;
 
 import java.io.File;
 import java.io.FileOutputStream;

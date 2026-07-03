@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 
 import TimeTracker.data.Database;
 import TimeTracker.data.Session;
+import TimeTracker.util.GlobalHotkey;
 
 /**
  * Master data container class of the application

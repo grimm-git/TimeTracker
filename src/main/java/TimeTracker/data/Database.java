@@ -31,7 +31,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 
 import TimeTracker.Defaults;
-import TimeTracker.GlobalHotkey;
+import TimeTracker.util.GlobalHotkey;
 
 /**
  * Database manages the SQLite database that stores the recorded sessions.

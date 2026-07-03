@@ -26,6 +26,7 @@ import com.github.kwhat.jnativehook.NativeHookException;
 import TimeTracker.data.Database;
 import TimeTracker.gui.MainWindowController;
 import TimeTracker.gui.Notification;
+import TimeTracker.util.GlobalHotkey;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.stage.Stage;

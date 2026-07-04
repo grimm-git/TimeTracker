@@ -36,9 +36,9 @@ public final class Defaults
      * be shown in the About window. It is for information only.
      */
     public static final int       APP_VERSION = 0;
-    public static final int       APP_REVISION = 5;
+    public static final int       APP_REVISION = 6;
     public static final String    APP_SUFFIX = "";
-    public static final LocalDate APP_DATE = LocalDate.of(2026, 7, 3);
+    public static final LocalDate APP_DATE = LocalDate.of(2026, 7, 4);
 
     /**
      * DB_FILE_NAME is the default file name of the SQLite database. It is used

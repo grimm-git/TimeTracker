@@ -82,7 +82,7 @@ extends Application
         stage.getIcons().add(mw.getImageResource("timetracker_256x256.png"));
         stage.show();
 
-        // Install a system-wide hotkey (CTRL+SHIFT+T) that re-shows the window
+        // Install a system-wide hotkey (CTRL+SHIFT+F10) that re-shows the window
         // even when the application has no focus. Failure to install the native
         // hook (e.g. on a Wayland session) must not prevent the app from running.
         Registry Reg = Registry.get();

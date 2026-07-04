@@ -28,6 +28,15 @@
         <menus>
           <Menu mnemonicParsing="false" text="File">
             <items>
+                  <MenuItem fx:id="miExport" mnemonicParsing="false" onAction="#handleMenus" text="Export">
+                     <graphic>
+                        <ImageView pickOnBounds="true" preserveRatio="true">
+                           <image>
+                              <Image url="@../images/save_16.png" />
+                           </image>
+                        </ImageView>
+                     </graphic>
+                  </MenuItem>
               <MenuItem fx:id="miExit" mnemonicParsing="false" onAction="#handleMenus" text="Terminate">
                      <graphic>
                         <ImageView pickOnBounds="true" preserveRatio="true">

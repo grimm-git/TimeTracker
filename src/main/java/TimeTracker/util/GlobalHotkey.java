@@ -17,14 +17,12 @@
 
 package TimeTracker.util;
 
-import java.lang.reflect.Field;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.github.kwhat.jnativehook.GlobalScreen;
 import com.github.kwhat.jnativehook.NativeHookException;
-import com.github.kwhat.jnativehook.NativeInputEvent;
 import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
 import com.github.kwhat.jnativehook.keyboard.NativeKeyListener;
 
@@ -35,7 +33,7 @@ import javafx.application.Platform;
  * hotkey can bring the hidden application window back to the front, even while
  * the application has no focus.<p>
  *
- * The default combination is {@code CTRL+SHIFT+T}.<p>
+ * The default combination is {@code CTRL+SHIFT+F10}.<p>
  *
  * JNativeHook delivers key events on its own native dispatch thread, so the
  * trigger action is forwarded to the JavaFX Application Thread via
@@ -66,10 +64,10 @@ implements NativeKeyListener
     private final Runnable onTrigger;
     private boolean registered = false;
 
-    // Customizable combination, defaulting to CTRL+SHIFT+T. Volatile because the
+    // Customizable combination, defaulting to CTRL+SHIFT+F10. Volatile because the
     // combination may be changed on the JavaFX thread while the native hook
     // thread reads it in nativeKeyPressed().
-    private volatile int keyCode   = NativeKeyEvent.VC_T;
+    private volatile int keyCode   = NativeKeyEvent.VC_F10;
     private volatile int modifiers = NativeKeyEvent.CTRL_MASK | NativeKeyEvent.SHIFT_MASK;
 
     /**
@@ -94,9 +92,9 @@ implements NativeKeyListener
         this.modifiers = modifiers & MOD_MASK;
     }
 
-    /** The default combination ({@code CTRL+SHIFT+T}) in packed form. */
+    /** The default combination ({@code CTRL+SHIFT+F10}) in packed form. */
     public static final int DEFAULT_HOTKEY =
-            packHotkey(NativeKeyEvent.VC_T, NativeKeyEvent.CTRL_MASK | NativeKeyEvent.SHIFT_MASK);
+            packHotkey(NativeKeyEvent.VC_F10, NativeKeyEvent.CTRL_MASK | NativeKeyEvent.SHIFT_MASK);
 
     /**
      * Packs a key code and modifier mask into a single integer suitable for
@@ -299,34 +297,10 @@ implements NativeKeyListener
     public void nativeKeyPressed(NativeKeyEvent ev)
     {
         // Keep this callback cheap: only compare and hand off to the FX thread.
+        // The hotkey is not swallowed, so it also reaches the focused application.
         if (onTrigger != null
                 && ev.getKeyCode() == keyCode && normalize(ev.getModifiers()) == modifiers) {
-            consume(ev);
             Platform.runLater(onTrigger);
-        }
-    }
-
-    /**
-     * Asks JNativeHook to swallow the event so the keycode is not propagated to
-     * the focused application. Consumption is requested by setting bit
-     * {@code 0x01} of the private {@code reserved} field on {@link
-     * NativeInputEvent}, for which there is no public setter.<p>
-     *
-     * This is honoured on Windows and macOS only. On Linux the underlying
-     * XRecord tap is passive and read-only, so the event still reaches other
-     * applications and this call has no effect (the reflection failure, if any,
-     * is swallowed).
-     *
-     * @param ev the matched event to suppress
-     */
-    private static void consume(NativeKeyEvent ev)
-    {
-        try {
-            Field reserved = NativeInputEvent.class.getDeclaredField("reserved");
-            reserved.setAccessible(true);
-            reserved.setShort(ev, (short) 0x01);
-        } catch (ReflectiveOperationException | SecurityException e) {
-            // Suppression unsupported here; let the event propagate.
         }
     }
 

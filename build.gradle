@@ -6,7 +6,7 @@ plugins {
 }
 
 //version gitVersion()
-version = '0.5'   // keep in sync with TimeTracker.Defaults.APP_VERSION/APP_REVISION
+version = '0.6'   // keep in sync with TimeTracker.Defaults.APP_VERSION/APP_REVISION
 description = 'TimeTracker'
 
 repositories {

@@ -65,6 +65,7 @@ extends WindowFX
     @FXML  private Label  errorMsg;
     @FXML  private MenuItem miOpen;
     @FXML  private MenuItem miExit;
+    @FXML  private MenuItem miExport;
     @FXML  private MenuItem miAbout;
 
     @FXML  private TextField textSessionDay;
@@ -227,6 +228,26 @@ extends WindowFX
         }
     }
 
+    @FXML
+    protected void handleMenus(ActionEvent event) throws IOException
+    {
+        if (learningHotkey) return;
+
+        // File Menu
+        if (event.getSource() == miExit) {
+            Platform.exit();
+
+        } else if (event.getSource() == miExport) {
+
+            
+        // Help Menu
+        } else if (event.getSource() == miAbout) {
+            AboutController ctrl = new AboutController();
+            ctrl.show();
+        }
+    }   
+
+
     /**
      * Handles clicks on the learn toggle button. Toggling it on starts the
      * recording of a new hotkey; toggling it off again aborts and restores the
@@ -315,22 +336,6 @@ extends WindowFX
             showError("Hotkey is active but could not be saved: " + e.getLocalizedMessage());
         }
     }
-
-    @FXML
-    protected void handleMenus(ActionEvent event) throws IOException
-    {
-        if (learningHotkey) return;
-
-        // File Menu
-        if (event.getSource() == miExit) {
-            Platform.exit();
-
-        // Help Menu
-        } else if (event.getSource() == miAbout) {
-            AboutController ctrl = new AboutController();
-            ctrl.show();
-        }
-    }   
 
     private Callback<TableColumn<Session, LocalDateTime>, TableCell<Session, LocalDateTime>> formatDateTime = (tableColumn) -> {
         TableCell<Session, LocalDateTime> tableCell = new TableCell<>() {

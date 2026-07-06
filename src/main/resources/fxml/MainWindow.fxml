@@ -33,7 +33,7 @@
                      <graphic>
                         <ImageView pickOnBounds="true" preserveRatio="true">
                            <image>
-                              <Image url="@../images/save_16.png" />
+                              <Image url="@../images/16_save.png" />
                            </image>
                         </ImageView>
                      </graphic>

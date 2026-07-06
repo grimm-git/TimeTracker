@@ -6,7 +6,10 @@ plugins {
 }
 
 //version gitVersion()
-version = '0.6'   // keep in sync with TimeTracker.Defaults.APP_VERSION/APP_REVISION
+// Single source of truth: gradle.properties (appVersion/appRevision/appSuffix).
+// The same values are filtered into resources/version.properties below and read
+// at runtime by TimeTracker.Defaults, so the version lives in exactly one place.
+version = "${appVersion}.${appRevision}${appSuffix}"
 description = 'TimeTracker'
 
 repositories {
@@ -49,7 +52,26 @@ dependencies {
 // assumes a file: code source (which breaks in a jlink image). So copy those
 // libraries into this module's own resources under jni/<os>/<arch>/, where
 // JNativeHookLibraryLocator can read them regardless of run mode.
+// Stamp the version and build date into version.properties, which Defaults reads
+// at runtime. Keyed off gradle.properties so a version bump there flows through
+// to the running application without touching any Java source.
+def buildDate = java.time.LocalDate.now().toString()   // ISO yyyy-MM-dd
+
 processResources {
+    inputs.property('appVersion', appVersion)
+    inputs.property('appRevision', appRevision)
+    inputs.property('appSuffix', appSuffix)
+    inputs.property('buildDate', buildDate)
+
+    filesMatching('version.properties') {
+        filter(org.apache.tools.ant.filters.ReplaceTokens, tokens: [
+            appVersion : appVersion.toString(),
+            appRevision: appRevision.toString(),
+            appSuffix  : appSuffix.toString(),
+            buildDate  : buildDate
+        ])
+    }
+
     from(provider {
         zipTree(configurations.runtimeClasspath.files.find { it.name.startsWith('jnativehook-') })
     }) {

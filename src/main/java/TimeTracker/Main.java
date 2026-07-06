@@ -25,6 +25,7 @@ import com.github.kwhat.jnativehook.NativeHookException;
 
 import TimeTracker.data.Database;
 import TimeTracker.gui.MainWindowController;
+import TimeTracker.gui.SplashController;
 import TimeTracker.gui.Notification;
 import TimeTracker.util.GlobalHotkey;
 import javafx.application.Application;
@@ -69,6 +70,10 @@ extends Application
         // cleanly. A forced SIGKILL (kill -9) cannot be intercepted.
         Runtime.getRuntime().addShutdownHook(
                 new Thread(() -> Registry.get().close(), "shutdown-hook"));
+
+
+        SplashController sc = new SplashController();
+        sc.showAndWait();
 
         // The application can not run without its database, so open it first.
         // On failure the user is informed and the application terminates.

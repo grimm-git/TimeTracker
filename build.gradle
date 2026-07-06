@@ -244,6 +244,7 @@ distributions {
     main {
         distributionBaseName = 'TimeTracker'
         contents {
+	    from "timetracker.ico"
         }
     }
 }

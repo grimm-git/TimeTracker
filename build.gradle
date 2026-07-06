@@ -2,10 +2,8 @@ plugins {
     id 'application'
     id 'jacoco'
     id 'org.openjfx.javafxplugin' version '0.1.0'
-//    id 'com.palantir.git-version' version '0.15.0'
 }
 
-//version gitVersion()
 // Single source of truth: gradle.properties (appVersion/appRevision/appSuffix).
 // The same values are filtered into resources/version.properties below and read
 // at runtime by TimeTracker.Defaults, so the version lives in exactly one place.
@@ -52,6 +50,7 @@ dependencies {
 // assumes a file: code source (which breaks in a jlink image). So copy those
 // libraries into this module's own resources under jni/<os>/<arch>/, where
 // JNativeHookLibraryLocator can read them regardless of run mode.
+
 // Stamp the version and build date into version.properties, which Defaults reads
 // at runtime. Keyed off gradle.properties so a version bump there flows through
 // to the running application without touching any Java source.

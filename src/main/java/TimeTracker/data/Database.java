@@ -130,18 +130,50 @@ public class Database
 
             stmt.execute(
                 "CREATE TABLE IF NOT EXISTS config ("
-              + "    id        INTEGER PRIMARY KEY CHECK (id = 1), "
-              + "    breaktime INTEGER NOT NULL, "
-              + "    hotkey    INTEGER NOT NULL"
+              + "    id          INTEGER PRIMARY KEY CHECK (id = 1), "
+              + "    breaktime   INTEGER NOT NULL, "
+              + "    hotkey      INTEGER NOT NULL, "
+              + "    hideatstart INTEGER NOT NULL DEFAULT 0"
               + ")");
+
+            // Bring config tables created by earlier versions up to date by
+            // adding columns introduced later. On a freshly created table the
+            // column is already present, so the migration is guarded to run
+            // only when it is actually missing.
+            if (!columnExists("config", "hideatstart"))
+                stmt.execute("ALTER TABLE config ADD COLUMN hideatstart INTEGER NOT NULL DEFAULT 0");
         }
 
         try (PreparedStatement stmt = dbCNX.prepareStatement(
-                "INSERT OR IGNORE INTO config (id, breaktime, hotkey) VALUES (1, ?, ?)")) {
+                "INSERT OR IGNORE INTO config (id, breaktime, hotkey, hideatstart) VALUES (1, ?, ?, ?)")) {
             stmt.setInt(1, Defaults.DEFAULT_BREAK_TIME);
             stmt.setInt(2, GlobalHotkey.DEFAULT_HOTKEY);
+            stmt.setInt(3, Defaults.DEFAULT_HIDE_AT_START);
             stmt.executeUpdate();
         }
+    }
+
+    /**
+     * Checks whether the given table already has a column of the given name,
+     * using SQLite's {@code PRAGMA table_info}. Used to make column-adding
+     * schema migrations idempotent.
+     *
+     * @param table  the table to inspect
+     * @param column the column name to look for
+     * @return true if the column exists, false otherwise
+     * @throws SQLException if the table can not be inspected
+     */
+    private boolean columnExists(String table, String column) throws SQLException
+    {
+        try (Statement stmt = dbCNX.createStatement();
+             ResultSet rs = stmt.executeQuery("PRAGMA table_info(" + table + ")")) {
+
+            while (rs.next()) {
+                if (column.equalsIgnoreCase(rs.getString("name")))
+                    return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -162,16 +194,19 @@ public class Database
     {
         private final int breakTime;
         private final int hotkeyCombo;
+        private final int hideAtStart;
 
         /**
          * @param breakTime   the break duration in minutes
          * @param hotkeyCombo the global hotkey combination in packed form
          *                    (see {@link GlobalHotkey#packHotkey(int, int)})
+         * @param hideAtStart the "hide at start" flag (0 = disabled, 1 = enabled)
          */
-        public Config(int breakTime, int hotkeyCombo)
+        public Config(int breakTime, int hotkeyCombo, int hideAtStart)
         {
             this.breakTime = breakTime;
             this.hotkeyCombo = hotkeyCombo;
+            this.hideAtStart = hideAtStart;
         }
 
         /** @return the break duration in minutes */
@@ -185,6 +220,12 @@ public class Database
         {
             return hotkeyCombo;
         }
+
+        /** @return the "hide at start" flag (0 = disabled, 1 = enabled) */
+        public int hideAtStart()
+        {
+            return hideAtStart;
+        }
     }
 
     /**
@@ -197,15 +238,17 @@ public class Database
      */
     public Config readConfig() throws SQLException
     {
-        String sql = "SELECT breaktime, hotkey FROM config WHERE id = 1";
+        String sql = "SELECT breaktime, hotkey, hideatstart FROM config WHERE id = 1";
 
         try (Statement stmt = dbCNX.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
 
             if (!rs.next())
-                return new Config(Defaults.DEFAULT_BREAK_TIME, GlobalHotkey.DEFAULT_HOTKEY);
+                return new Config(Defaults.DEFAULT_BREAK_TIME, GlobalHotkey.DEFAULT_HOTKEY,
+                                  Defaults.DEFAULT_HIDE_AT_START);
 
-            return new Config(rs.getInt("breaktime"), rs.getInt("hotkey"));
+            return new Config(rs.getInt("breaktime"), rs.getInt("hotkey"),
+                              rs.getInt("hideatstart"));
         }
     }
 
@@ -219,13 +262,14 @@ public class Database
      */
     public void writeConfig(Config config) throws SQLException
     {
-        String sql = "INSERT INTO config (id, breaktime, hotkey) VALUES (1, ?, ?) "
+        String sql = "INSERT INTO config (id, breaktime, hotkey, hideatstart) VALUES (1, ?, ?, ?) "
                    + "ON CONFLICT(id) DO UPDATE SET breaktime = excluded.breaktime, "
-                   + "hotkey = excluded.hotkey";
+                   + "hotkey = excluded.hotkey, hideatstart = excluded.hideatstart";
 
         try (PreparedStatement stmt = dbCNX.prepareStatement(sql)) {
             stmt.setInt(1, config.breakTime());
             stmt.setInt(2, config.hotkeyCombo());
+            stmt.setInt(3, config.hideAtStart());
             stmt.executeUpdate();
         }
     }

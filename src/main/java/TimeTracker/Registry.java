@@ -46,6 +46,7 @@ public class Registry
     private Path cfgDBPath;
     private int cfgBreakTime;
     private int cfgHotkey;                        // configured hotkey in packed form
+    private int cfgHideAtStart;                   // "hide at start" flag (0/1)
 
     /**
      * This method is the global access to the Registry object, which is a Singleton
@@ -154,13 +155,15 @@ public class Registry
             activeSession = dbHandle.getLastSession();
 
             Database.Config cfg = dbHandle.readConfig();
-            cfgBreakTime = cfg.breakTime();
-            cfgHotkey    = cfg.hotkeyCombo();
+            cfgBreakTime   = cfg.breakTime();
+            cfgHotkey      = cfg.hotkeyCombo();
+            cfgHideAtStart = cfg.hideAtStart();
 
         } catch (SQLException e) {
             System.err.println("Configuration could not be read: " + e.getMessage());
-            cfgBreakTime = Defaults.DEFAULT_BREAK_TIME;
-            cfgHotkey    = GlobalHotkey.DEFAULT_HOTKEY;
+            cfgBreakTime   = Defaults.DEFAULT_BREAK_TIME;
+            cfgHotkey      = GlobalHotkey.DEFAULT_HOTKEY;
+            cfgHideAtStart = Defaults.DEFAULT_HIDE_AT_START;
         }
     }
 
@@ -185,6 +188,25 @@ public class Registry
     }
 
     /**
+     * Applies a newly chosen break duration. The in-memory configuration is
+     * updated first and can not fail; the value is then persisted to the
+     * database (together with the other configuration fields) so it survives a
+     * restart. If the database write fails the value is still effective for the
+     * running session and the {@link SQLException} is propagated so the caller
+     * can inform the user.
+     *
+     * @param minutes the break duration in minutes
+     * @throws SQLException if the value could not be persisted
+     */
+    public void updateBreakTime(int minutes) throws SQLException
+    {
+        cfgBreakTime = minutes;
+
+        if (dbHandle != null)
+            dbHandle.writeConfig(new Database.Config(cfgBreakTime, cfgHotkey, cfgHideAtStart));
+    }
+
+    /**
      * Returns the configured global hotkey in packed form.
      *
      * @return the configured hotkey combination
@@ -193,6 +215,35 @@ public class Registry
     public int getHotkey()
     {
         return cfgHotkey;
+    }
+
+    /**
+     * Returns whether the "hide at start" flag is enabled.
+     *
+     * @return true if the application should hide at start, false otherwise
+     */
+    public boolean isHideAtStart()
+    {
+        return cfgHideAtStart != 0;
+    }
+
+    /**
+     * Applies a newly chosen "hide at start" setting. The in-memory
+     * configuration is updated first and can not fail; the value is then
+     * persisted to the database (together with the other configuration fields)
+     * so it survives a restart. If the database write fails the setting is still
+     * effective for the running session and the {@link SQLException} is
+     * propagated so the caller can inform the user.
+     *
+     * @param hideAtStart true to enable hiding at start, false to disable it
+     * @throws SQLException if the setting could not be persisted
+     */
+    public void updateHideAtStart(boolean hideAtStart) throws SQLException
+    {
+        cfgHideAtStart = hideAtStart ? 1 : 0;
+
+        if (dbHandle != null)
+            dbHandle.writeConfig(new Database.Config(cfgBreakTime, cfgHotkey, cfgHideAtStart));
     }
 
     /**
@@ -229,7 +280,7 @@ public class Registry
             hotkey.setHotkey(packedHotkey);
 
         if (dbHandle != null)
-            dbHandle.writeConfig(new Database.Config(cfgBreakTime, packedHotkey));
+            dbHandle.writeConfig(new Database.Config(cfgBreakTime, packedHotkey, cfgHideAtStart));
     }
 
     public ExecutorService getExecutor() { return threadExecutor; }

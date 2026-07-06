@@ -80,17 +80,23 @@ extends Application
         if (!openDatabase())
             return;
 
+        Registry Reg = Registry.get();
+
         MainWindowController mw = new MainWindowController(stage);
         stage.getIcons().add(mw.getImageResource("timetracker_16x16.png"));
         stage.getIcons().add(mw.getImageResource("timetracker_32x32.png"));
         stage.getIcons().add(mw.getImageResource("timetracker_64x64.png"));
         stage.getIcons().add(mw.getImageResource("timetracker_256x256.png"));
-        stage.show();
+
+        // The main window only appears at start when "hide at start" is disabled.
+        // When enabled the application starts in the background and the window
+        // is revealed later via the global hotkey (see below).
+        if (!Reg.isHideAtStart())
+            stage.show();
 
         // Install a system-wide hotkey (CTRL+SHIFT+F10) that re-shows the window
         // even when the application has no focus. Failure to install the native
         // hook (e.g. on a Wayland session) must not prevent the app from running.
-        Registry Reg = Registry.get();
         GlobalHotkey hotkey = new GlobalHotkey(mw::show);
         hotkey.setHotkey(Reg.getHotkey());   // use the persisted combo
 

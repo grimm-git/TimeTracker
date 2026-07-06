@@ -39,6 +39,7 @@ import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.ScrollBar;
@@ -86,6 +87,7 @@ extends WindowFX
     @FXML  private TextField cfgHotkey;
     @FXML  private TextField cfgBreaktime;
     @FXML  private ToggleButton btnLearnHotkey;
+    @FXML  private CheckBox checkHideAtStart;
 
     private final MainWindowData dataModel;
     private final DoubleProperty weekTableBarWidthProperty = new SimpleDoubleProperty();
@@ -124,6 +126,13 @@ extends WindowFX
         cfgDBPath.setText(Reg.getDatabasePath().toString());
         cfgHotkey.setText(GlobalHotkey.format(Reg.getHotkey()));
         cfgBreaktime.setText(String.format("%d",Reg.getBreakTime()));
+        checkHideAtStart.setSelected(Reg.isHideAtStart());
+
+        // Persist an edited break time as soon as the field loses focus, so the
+        // value is stored just like the hotkey and the "hide at start" flag.
+        cfgBreaktime.focusedProperty().addListener((obs, hadFocus, hasFocus) -> {
+            if (hadFocus && !hasFocus) saveBreakTime();
+        });
         
         // Current Session
         Session current = dataModel.getCurrentSession();
@@ -207,6 +216,52 @@ extends WindowFX
 
         if (ev.getSource() == btnClose) close();
         if (ev.getSource() == btnLearnHotkey) learnHotkey();
+        if (ev.getSource() == checkHideAtStart) saveHideAtStart();
+        if (ev.getSource() == cfgBreaktime) saveBreakTime();
+    }
+
+    /**
+     * Validates and persists the current content of the break time field to the
+     * database. Non-numeric or negative input is rejected: the field is restored
+     * to the stored value and the user is informed. On a database error the field
+     * is likewise reverted, so the display never disagrees with what is persisted.
+     */
+    private void saveBreakTime()
+    {
+        Registry Reg = Registry.get();
+        try {
+            int minutes = Integer.parseInt(cfgBreaktime.getText().trim());
+            if (minutes < 0)
+                throw new NumberFormatException("break time must not be negative");
+
+            Reg.updateBreakTime(minutes);
+            clearMessage();
+
+        } catch (NumberFormatException e) {
+            cfgBreaktime.setText(String.format("%d", Reg.getBreakTime()));
+            showError("Break time must be a whole number of minutes.");
+
+        } catch (SQLException e) {
+            cfgBreaktime.setText(String.format("%d", Reg.getBreakTime()));
+            showError("Could not save setting: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Persists the current state of the "hide at start" checkbox to the
+     * database. On a database error the checkbox is reverted to the stored
+     * value and the user is informed, so the display never disagrees with what
+     * is actually persisted.
+     */
+    private void saveHideAtStart()
+    {
+        Registry Reg = Registry.get();
+        try {
+            Reg.updateHideAtStart(checkHideAtStart.isSelected());
+        } catch (SQLException e) {
+            checkHideAtStart.setSelected(Reg.isHideAtStart());
+            showError("Could not save setting: " + e.getMessage());
+        }
     }
 
     @FXML

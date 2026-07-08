@@ -22,14 +22,6 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
-
-import TimeTracker.Defaults;
-import TimeTracker.Registry;
-import TimeTracker.data.Configuration;
-import TimeTracker.data.Session;
-import TimeTracker.util.GlobalHotkey;
-import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
@@ -51,6 +43,14 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.stage.Stage;
 import javafx.util.Callback;
+
+import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
+
+import TimeTracker.Defaults;
+import TimeTracker.Registry;
+import TimeTracker.data.Configuration;
+import TimeTracker.data.Session;
+import TimeTracker.util.GlobalHotkey;
 
 /**
  * FXML Controller class.<p>
@@ -86,6 +86,8 @@ extends WindowFX
     @FXML  private TextField cfgBreaktime;
     @FXML  private ToggleButton btnLearnHotkey;
     @FXML  private CheckBox checkHideAtStart;
+    @FXML  private CheckBox checkWDSaturday;
+    @FXML  private CheckBox checkWDSunday;
 
     private final MainWindowData dataModel;
     private final DoubleProperty weekTableBarWidthProperty = new SimpleDoubleProperty();
@@ -132,13 +134,16 @@ extends WindowFX
         
         // Current Session
         Session session = Reg.getSession();
+        textSessionDay.textProperty().addListener((obs, oldText, newText) -> updateWeekDayStyles());
         textSessionDay.textProperty().bind(session.SessionDayProperty());
         textSessionDate.textProperty().bind((session.SessionDateProperty()));
         textSessionTime.textProperty().bind(session.SessionTimeProperty());
         textSessionDur.textProperty().bind(dataModel.elapsedTimeProperty());
 
+
         // Table Week
         colDay.setCellValueFactory(new PropertyValueFactory<>("DayName"));
+        colDay.setCellFactory(formatWeekDay);
         colDay.getStyleClass().add("column-align-left");
 
         colStart.setCellValueFactory(new PropertyValueFactory<>("SessionStart"));
@@ -192,8 +197,10 @@ extends WindowFX
 
         if (ev.getSource() == btnClose) close();
         if (ev.getSource() == btnLearnHotkey) learnHotkey();
-        if (ev.getSource() == checkHideAtStart) saveHideAtStart();
         if (ev.getSource() == cfgBreaktime) saveBreakTime();
+        if (ev.getSource() == checkHideAtStart) saveOption(0);
+        if (ev.getSource() == checkWDSaturday) saveOption(1);
+        if (ev.getSource() == checkWDSunday) saveOption( 2);
     }
 
     /**
@@ -221,16 +228,29 @@ extends WindowFX
     }
 
     /**
-     * Persists the current state of the "hide at start" checkbox to the
-     * database. On a database error the checkbox is reverted to the stored
-     * value and the user is informed, so the display never disagrees with what
-     * is actually persisted.
+     * Save the current state of the checkbox options to the Configuration.
+     * After one minute the Configuration will be written to the database.
      */
-    private void saveHideAtStart()
+    private void saveOption(int opt)
     {
         Registry Reg = Registry.get();
         Configuration Config = Reg.getConfig();
-        Config.setHideAtStart(checkHideAtStart.isSelected());
+
+        switch (opt) {
+            case 0:         // HideAtStart
+                Config.setHideAtStart(checkHideAtStart.isSelected());
+                break;
+            case 1:         // WDSaturday
+                Config.setWDSaturday(checkWDSaturday.isSelected());
+                break;
+            case 2:         // WDSunday
+                Config.setWDSunday(checkWDSunday.isSelected());
+                break;
+            default:
+                break;
+        }
+        tableWeek.refresh();
+        updateWeekDayStyles();
     }
 
     @FXML
@@ -357,6 +377,36 @@ extends WindowFX
         Config.setHotkey(packedCombo);
         cfgHotkey.setText(GlobalHotkey.format(packedCombo));
         showSuccess("New hotkey: " + GlobalHotkey.format(packedCombo));
+    }
+
+    private Callback<TableColumn<Session, String>, TableCell<Session, String>> formatWeekDay = (tableColumn) -> {
+        TableCell<Session, String> tableCell = new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                this.setText(null);
+                this.setGraphic(null);
+                this.getStyleClass().remove("bankholiday");
+
+                Session session = this.getTableRow().getItem();
+                if (empty || item == null || session == null) return;
+
+                this.setText(item);
+                if (session.isBankHoliday())
+                    this.getStyleClass().add("bankholiday");
+            }
+        };
+        return tableCell;
+    };
+
+    private void updateWeekDayStyles()
+    {
+        Registry Reg = Registry.get();
+        Session session = Reg.getSession();
+
+        textSessionDay.getStyleClass().remove("bankholiday");
+        if (session.isBankHoliday())
+            textSessionDay.getStyleClass().add("bankholiday");
     }
 
     private Callback<TableColumn<Session, LocalDateTime>, TableCell<Session, LocalDateTime>> formatDateTime = (tableColumn) -> {

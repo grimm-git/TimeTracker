@@ -123,6 +123,18 @@ public class Session
         return duration.minusMinutes(Config.getBreakTime());
     }
 
+    public boolean isBankHoliday()
+    {
+        Registry Reg = Registry.get();
+        Configuration Config = Reg.getConfig();
+
+        int day = SessionStart.getDayOfWeek().getValue();
+        if (day == 6 && !Config.getWDSaturday()) return true;  // Saturday is workday?
+        if (day == 7 && !Config.getWDSunday())   return true;  // Sunday is workday ?
+
+        return false;
+    }
+
     /**
      * Returns the elapsed time between the session start and the current time.
      * Unlike {@link #getWorkTime()} this ignores the stored end time and is

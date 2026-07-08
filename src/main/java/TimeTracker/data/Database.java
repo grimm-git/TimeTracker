@@ -171,7 +171,9 @@ public class Database
               + "    id          INTEGER PRIMARY KEY CHECK (id = 1), "
               + "    breaktime   INTEGER NOT NULL, "
               + "    hotkey      INTEGER NOT NULL, "
-              + "    hideatstart INTEGER NOT NULL DEFAULT 0"
+              + "    hideatstart INTEGER NOT NULL DEFAULT 0,"
+              + "    wdsaturday  INTEGER NOT NULL DEFAULT 0,"
+              + "    wdsunday    INTEGER NOT NULL DEFAULT 0"
               + ")");
 
             // Bring config tables created by earlier versions up to date by
@@ -180,13 +182,19 @@ public class Database
             // only when it is actually missing.
             if (!columnExists(CXN, "config", "hideatstart"))
                 stmt.execute("ALTER TABLE config ADD COLUMN hideatstart INTEGER NOT NULL DEFAULT 0");
+            if (!columnExists(CXN, "config", "wdsaturday"))
+                stmt.execute("ALTER TABLE config ADD COLUMN wdsaturday INTEGER NOT NULL DEFAULT 0");
+            if (!columnExists(CXN, "config", "wdsunday"))
+                stmt.execute("ALTER TABLE config ADD COLUMN wdsunday INTEGER NOT NULL DEFAULT 0");
         }
 
         try (PreparedStatement stmt = CXN.prepareStatement(
-                "INSERT OR IGNORE INTO config (id, breaktime, hotkey, hideatstart) VALUES (1, ?, ?, ?)")) {
+                "INSERT OR IGNORE INTO config (id, breaktime, hotkey, hideatstart, wdsaturday, wdsunday) VALUES (1, ?, ?, ?, ?, ?)")) {
             stmt.setInt(1, Defaults.DEFAULT_BREAK_TIME);
             stmt.setInt(2, GlobalHotkey.DEFAULT_HOTKEY);
             stmt.setInt(3, Defaults.DEFAULT_HIDE_AT_START ? 1 : 0);
+            stmt.setInt(4, 0);
+            stmt.setInt(5, 0);
             stmt.executeUpdate();
         }
     }
@@ -228,7 +236,7 @@ public class Database
         Registry Reg = Registry.get();
         Configuration Config = Reg.getConfig();
 
-        String sql = "SELECT breaktime, hotkey, hideatstart FROM config WHERE id = 1";
+        String sql = "SELECT breaktime, hotkey, hideatstart, wdsaturday, wdsunday FROM config WHERE id = 1";
 
         try (Statement stmt = CXN.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -237,6 +245,8 @@ public class Database
                 Config.setBreakTime(rs.getInt("breaktime"));
                 Config.setHotkey(rs.getInt("hotkey"));
                 Config.setHideAtStart(rs.getInt("hideatstart") == 0 ? false : true);
+                Config.setWDSaturday(rs.getInt("wdsaturday") == 0 ? false : true);
+                Config.setWDSunday(rs.getInt("wdsunday") == 0 ? false : true);
             }
         }
     }
@@ -256,14 +266,17 @@ public class Database
         Configuration Config = Reg.getConfig();
         
         if (Config.isDirty()) {
-            String sql = "INSERT INTO config (id, breaktime, hotkey, hideatstart) VALUES (1, ?, ?, ?) "
+            String sql = "INSERT INTO config (id, breaktime, hotkey, hideatstart, wdsaturday, wdsunday) VALUES (1, ?, ?, ?, ?, ?) "
                        + "ON CONFLICT(id) DO UPDATE SET breaktime = excluded.breaktime, "
-                       + "hotkey = excluded.hotkey, hideatstart = excluded.hideatstart";
+                       + "hotkey = excluded.hotkey, hideatstart = excluded.hideatstart, "
+                       + "wdsaturday = excluded.wdsaturday, wdsunday = excluded.wdsunday";
 
             try (PreparedStatement stmt = CXN.prepareStatement(sql)) {
                 stmt.setInt(1, Config.getBreakTime());
                 stmt.setInt(2, Config.getHotkey());
                 stmt.setInt(3, Config.getHideAtStart() ? 1 : 0);
+                stmt.setInt(4, Config.getWDSaturday() ? 1 : 0);
+                stmt.setInt(5, Config.getWDSunday() ? 1 : 0);
                 stmt.executeUpdate();
             }
         }

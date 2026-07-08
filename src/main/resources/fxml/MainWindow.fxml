@@ -148,7 +148,7 @@
                       <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="NEVER" />
                         <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="NEVER" />
                       <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="NEVER" />
-                      <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="NEVER" />
+                      <RowConstraints minHeight="10.0" prefHeight="30.0" valignment="TOP" />
                         <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                     </rowConstraints>
                      <padding>
@@ -174,8 +174,20 @@
                               </ToggleButton>
                            </children>
                         </HBox>
-                        <Label text="Options:" GridPane.rowIndex="3" />
-                        <CheckBox fx:id="checkHideAtStart" mnemonicParsing="false" onAction="#handleAction" text="Hide at start" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+                        <Label text="Options:" GridPane.rowIndex="3">
+                           <padding>
+                              <Insets top="5.0" />
+                           </padding></Label>
+                        <VBox spacing="4.0" GridPane.columnIndex="1" GridPane.rowIndex="3" GridPane.vgrow="ALWAYS">
+                           <children>
+                              <CheckBox fx:id="checkHideAtStart" mnemonicParsing="false" onAction="#handleAction" text="Hide at start" />
+                              <CheckBox fx:id="checkWDSaturday" mnemonicParsing="false" onAction="#handleAction" text="Saturday is working day" />
+                              <CheckBox fx:id="checkWDSunday" mnemonicParsing="false" onAction="#handleAction" text="Sunday is working day" />
+                           </children>
+                           <padding>
+                              <Insets bottom="4.0" top="4.0" />
+                           </padding>
+                        </VBox>
                      </children>
                   </GridPane>
                </content>

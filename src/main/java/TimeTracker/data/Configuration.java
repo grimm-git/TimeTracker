@@ -29,6 +29,8 @@ public class Configuration
     private int mBreakTime;
     private int mHotkey;
     private boolean mHideAtStart;
+    private boolean mWDSaturday;
+    private boolean mWDSunday;
 
     public Configuration()
     {
@@ -37,6 +39,8 @@ public class Configuration
         mBreakTime   = Defaults.DEFAULT_BREAK_TIME;
         mHotkey      = GlobalHotkey.DEFAULT_HOTKEY;
         mHideAtStart = Defaults.DEFAULT_HIDE_AT_START;
+        mWDSaturday  = false;
+        mWDSunday    = false;
     }
     
     public boolean isDirty()
@@ -80,7 +84,7 @@ public class Configuration
         mDirty = true;
     }
 
-    /** @return the "hide at start" flag (0 = disabled, 1 = enabled) */
+    /** @return the "hide at start" flag (false = disabled, true = enabled) */
     public boolean getHideAtStart()
     {
         return mHideAtStart;
@@ -89,6 +93,30 @@ public class Configuration
     public void setHideAtStart(boolean arg)
     {
         mHideAtStart = arg;
+        mDirty = true;
+    }
+
+    /** @return the "saturday is workday" flag (false = disabled, true = enabled) */
+    public boolean getWDSaturday()
+    {
+        return mWDSaturday;
+    }
+
+    public void setWDSaturday(boolean arg)
+    {
+        mWDSaturday = arg;
+        mDirty = true;
+    }
+
+    /** @return the "sunday is workday" flag (false = disabled, true = enabled) */
+    public boolean getWDSunday()
+    {
+        return mWDSunday;
+    }
+
+    public void setWDSunday(boolean arg)
+    {
+        mWDSunday = arg;
         mDirty = true;
     }
 }

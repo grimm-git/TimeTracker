@@ -76,6 +76,11 @@ public class Registry
     {
         if (hotkey != null)
             hotkey.unregister();
+
+        try {
+            DBase.updateDatabase(); // save Session and Configuration
+
+        } catch (SQLException e) { /* IGNORE */ }
     }
 
     /**

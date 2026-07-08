@@ -24,13 +24,13 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Types;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 
 import TimeTracker.Defaults;
+import TimeTracker.Registry;
 import TimeTracker.util.GlobalHotkey;
 
 /**
@@ -46,7 +46,6 @@ import TimeTracker.util.GlobalHotkey;
 public class Database
 {
     private final Path dbPath;
-    private Connection dbCNX;
 
     /**
      * Creates a Database bound to the given file location and makes sure the
@@ -56,35 +55,12 @@ public class Database
      * @param dbPath the location of the SQLite database file
      * @throws SQLException if the database can not be opened or created
      */
-    public Database(Path dbPath) throws SQLException
+    public Database(Path arg) throws SQLException
     {
-        this.dbPath = dbPath;
-        initDatabase();
-    }
+        this.dbPath = arg;
 
-    /**
-     * Checks for the existence of the SQLite database file and creates it with
-     * the required schema if it is missing. When the file already exists the
-     * connection is simply opened. The schema is created with IF NOT EXISTS so
-     * that calling this method on an existing database is harmless.
-     *
-     * @throws SQLException if the database can not be opened or the schema can
-     *                      not be created
-     */
-    private void initDatabase() throws SQLException
-    {
+        // Checks the existance of the SQL database file and creates it if it doesn't
         boolean exists = Files.exists(dbPath);
-
-        // Opening the connection creates the file if it does not exist yet.
-        dbCNX = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
-
-        try (Statement stmt = dbCNX.createStatement()) {
-            // WAL mode gives atomic, crash safe writes so that a crash while a
-            // session is being written can never corrupt the database.
-            stmt.execute("PRAGMA journal_mode=WAL");
-            stmt.execute("PRAGMA foreign_keys=ON");
-        }
-
         if (!exists) {
             // Create all missing directories for the SQLite database file.
             try {
@@ -96,12 +72,73 @@ public class Database
                 throw new SQLException("Could not create directory for database: " + dbPath, e);
             }
         }
-
+            
         // The schema is created with IF NOT EXISTS on every open, so databases
-        // created by earlier versions gain newly added tables (e.g. config)
-        // transparently.
-        createSchema();
+        // created by earlier versions gain newly added tables (e.g. config) transparently.
+        Connection CXN = openDatabase();
+        createSchema(CXN);
+        readSession(CXN);
+        readConfig(CXN);
+        CXN.close();
     }
+
+    public void updateDatabase() throws SQLException
+    {
+        Connection CXN = openDatabase();
+        writeSession(CXN);
+        writeConfig(CXN);
+        CXN.close();
+    }
+
+    public Connection openDatabase() throws SQLException
+    {
+        // Opening the connection creates the file if it does not exist yet.
+        Connection CXN = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
+
+        try (Statement stmt = CXN.createStatement()) {
+            // WAL mode gives atomic, crash safe writes so that a crash while a
+            // session is being written can never corrupt the database.
+            stmt.execute("PRAGMA journal_mode=WAL");
+            stmt.execute("PRAGMA foreign_keys=ON");
+        }
+
+        return CXN;
+    }
+ 
+    /**
+     * Reads up to the last ten finished sessions from the database, most recent
+     * first. The current session is excluded
+     *
+     * @return an ArrayList of the last (at most ten) finished sessions, newest
+     *         first; empty if the database holds no finished sessions
+     * @throws SQLException if the sessions can not be read
+     */
+    public ArrayList<Session> getSessionLog() throws SQLException
+    {
+        ArrayList<Session> sessions = new ArrayList<>();
+
+        String sql = "SELECT id, start, end FROM sessions "
+                   + "WHERE end IS NOT NULL ORDER BY id DESC LIMIT 10";
+
+        Connection CXN = openDatabase();
+        try (Statement stmt = CXN.createStatement();
+            ResultSet rs = stmt.executeQuery(sql)) {
+
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                LocalDateTime start = toLocalDateTime(rs.getLong("start"));
+                LocalDateTime end   = toLocalDateTime(rs.getLong("end"));
+                sessions.add(new Session(id, start, end));
+            }
+        }
+        CXN.close();
+
+        return sessions;
+    }
+
+    /******************************************************************************
+     *                               Private methods                              *
+     ******************************************************************************/
 
     /**
      * Creates the database schema. The sessions table holds one row per
@@ -112,11 +149,12 @@ public class Database
      * and it is seeded with the default break time and hotkey combination, an
      * existing configuration being left untouched.
      *
+     * @param CNX Open connection to database
      * @throws SQLException if the schema can not be created
      */
-    private void createSchema() throws SQLException
+    private void createSchema(Connection CXN) throws SQLException
     {
-        try (Statement stmt = dbCNX.createStatement()) {
+        try (Statement stmt = CXN.createStatement()) {
             stmt.execute(
                 "CREATE TABLE IF NOT EXISTS sessions ("
               + "    id    INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -140,15 +178,15 @@ public class Database
             // adding columns introduced later. On a freshly created table the
             // column is already present, so the migration is guarded to run
             // only when it is actually missing.
-            if (!columnExists("config", "hideatstart"))
+            if (!columnExists(CXN, "config", "hideatstart"))
                 stmt.execute("ALTER TABLE config ADD COLUMN hideatstart INTEGER NOT NULL DEFAULT 0");
         }
 
-        try (PreparedStatement stmt = dbCNX.prepareStatement(
+        try (PreparedStatement stmt = CXN.prepareStatement(
                 "INSERT OR IGNORE INTO config (id, breaktime, hotkey, hideatstart) VALUES (1, ?, ?, ?)")) {
             stmt.setInt(1, Defaults.DEFAULT_BREAK_TIME);
             stmt.setInt(2, GlobalHotkey.DEFAULT_HOTKEY);
-            stmt.setInt(3, Defaults.DEFAULT_HIDE_AT_START);
+            stmt.setInt(3, Defaults.DEFAULT_HIDE_AT_START ? 1 : 0);
             stmt.executeUpdate();
         }
     }
@@ -158,14 +196,15 @@ public class Database
      * using SQLite's {@code PRAGMA table_info}. Used to make column-adding
      * schema migrations idempotent.
      *
+     * @param CXN    Open database connection
      * @param table  the table to inspect
      * @param column the column name to look for
      * @return true if the column exists, false otherwise
      * @throws SQLException if the table can not be inspected
      */
-    private boolean columnExists(String table, String column) throws SQLException
+    private boolean columnExists(Connection CXN, String table, String column) throws SQLException
     {
-        try (Statement stmt = dbCNX.createStatement();
+        try (Statement stmt = CXN.createStatement();
              ResultSet rs = stmt.executeQuery("PRAGMA table_info(" + table + ")")) {
 
             while (rs.next()) {
@@ -177,78 +216,28 @@ public class Database
     }
 
     /**
-     * Returns the open connection to the database.
-     *
-     * @return the database connection
-     */
-    public Connection getConnection()
-    {
-        return dbCNX;
-    }
-
-    /**
-     * Immutable snapshot of the application configuration as stored in the
-     * single-row {@code config} table.
-     */
-    public static final class Config
-    {
-        private final int breakTime;
-        private final int hotkeyCombo;
-        private final int hideAtStart;
-
-        /**
-         * @param breakTime   the break duration in minutes
-         * @param hotkeyCombo the global hotkey combination in packed form
-         *                    (see {@link GlobalHotkey#packHotkey(int, int)})
-         * @param hideAtStart the "hide at start" flag (0 = disabled, 1 = enabled)
-         */
-        public Config(int breakTime, int hotkeyCombo, int hideAtStart)
-        {
-            this.breakTime = breakTime;
-            this.hotkeyCombo = hotkeyCombo;
-            this.hideAtStart = hideAtStart;
-        }
-
-        /** @return the break duration in minutes */
-        public int breakTime()
-        {
-            return breakTime;
-        }
-
-        /** @return the global hotkey combination in packed form */
-        public int hotkeyCombo()
-        {
-            return hotkeyCombo;
-        }
-
-        /** @return the "hide at start" flag (0 = disabled, 1 = enabled) */
-        public int hideAtStart()
-        {
-            return hideAtStart;
-        }
-    }
-
-    /**
      * Reads the configuration row from the database. As {@link #createSchema()}
      * seeds the row on every open, a row is normally always present; should it
-     * be missing, the built-in defaults are returned instead.
+     * be missing, an SQLException is thrown.
      *
-     * @return the stored configuration
-     * @throws SQLException if the configuration can not be read
+     * @param  CXN  Open database connection
+     * @throws SQLException if the configuration can not be read 
      */
-    public Config readConfig() throws SQLException
+    private void readConfig(Connection CXN) throws SQLException
     {
+        Registry Reg = Registry.get();
+        Configuration Config = Reg.getConfig();
+
         String sql = "SELECT breaktime, hotkey, hideatstart FROM config WHERE id = 1";
 
-        try (Statement stmt = dbCNX.createStatement();
+        try (Statement stmt = CXN.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
 
-            if (!rs.next())
-                return new Config(Defaults.DEFAULT_BREAK_TIME, GlobalHotkey.DEFAULT_HOTKEY,
-                                  Defaults.DEFAULT_HIDE_AT_START);
-
-            return new Config(rs.getInt("breaktime"), rs.getInt("hotkey"),
-                              rs.getInt("hideatstart"));
+            if (rs.next()) {
+                Config.setBreakTime(rs.getInt("breaktime"));
+                Config.setHotkey(rs.getInt("hotkey"));
+                Config.setHideAtStart(rs.getInt("hideatstart") == 0 ? false : true);
+            }
         }
     }
 
@@ -256,83 +245,56 @@ public class Database
      * Writes the configuration back to the single-row config table. The upsert
      * updates the existing row (id = 1) or, should it be missing, inserts it, so
      * the configuration is persisted regardless of the prior table state.
+     * The database will be opened if necessary and closed again afterwards.
      *
-     * @param config the configuration to store
+     * @param  CXN  Open connection to database
      * @throws SQLException if the configuration can not be written
      */
-    public void writeConfig(Config config) throws SQLException
+    private void writeConfig(Connection CXN) throws SQLException
     {
-        String sql = "INSERT INTO config (id, breaktime, hotkey, hideatstart) VALUES (1, ?, ?, ?) "
-                   + "ON CONFLICT(id) DO UPDATE SET breaktime = excluded.breaktime, "
-                   + "hotkey = excluded.hotkey, hideatstart = excluded.hideatstart";
+        Registry Reg = Registry.get();
+        Configuration Config = Reg.getConfig();
+        
+        if (Config.isDirty()) {
+            String sql = "INSERT INTO config (id, breaktime, hotkey, hideatstart) VALUES (1, ?, ?, ?) "
+                       + "ON CONFLICT(id) DO UPDATE SET breaktime = excluded.breaktime, "
+                       + "hotkey = excluded.hotkey, hideatstart = excluded.hideatstart";
 
-        try (PreparedStatement stmt = dbCNX.prepareStatement(sql)) {
-            stmt.setInt(1, config.breakTime());
-            stmt.setInt(2, config.hotkeyCombo());
-            stmt.setInt(3, config.hideAtStart());
-            stmt.executeUpdate();
-        }
-    }
-
-    /**
-     * Reads the most recently recorded session from the database and returns it
-     * as a Session object. The newest session is the one with the highest id,
-     * i.e. the row that was inserted last. A session that has not been finished
-     * yet (NULL end time stamp) is returned with LocalDateTime.MIN as its end,
-     * matching the convention used by the Session class.
-     *
-     * @return the last session, or null if the database contains no sessions
-     * @throws SQLException if the session can not be read
-     */
-    public Session getLastSession() throws SQLException
-    {
-        String sql = "SELECT start, end FROM sessions ORDER BY id DESC LIMIT 1";
-
-        try (Statement stmt = dbCNX.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-
-            if (!rs.next())
-                return null;
-
-            LocalDateTime start = toLocalDateTime(rs.getLong("start"));
-
-            long endMillis = rs.getLong("end");
-            LocalDateTime end = rs.wasNull() ? LocalDateTime.MIN
-                                             : toLocalDateTime(endMillis);
-
-            return new Session(start, end);
-        }
-    }
-
-    /**
-     * Reads up to the last ten finished sessions from the database, most recent
-     * first. The current, unfinished session (its end time stamp is NULL) is
-     * excluded, so every returned session has a real end time.
-     *
-     * @return an ArrayList of the last (at most ten) finished sessions, newest
-     *         first; empty if the database holds no finished sessions
-     * @throws SQLException if the sessions can not be read
-     */
-    public ArrayList<Session> getSessionLog() throws SQLException
-    {
-        String sql = "SELECT start, end FROM sessions "
-                   + "WHERE end IS NOT NULL ORDER BY id DESC LIMIT 10";
-
-        ArrayList<Session> sessions = new ArrayList<>();
-
-        try (Statement stmt = dbCNX.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-
-            while (rs.next()) {
-                LocalDateTime start = toLocalDateTime(rs.getLong("start"));
-                LocalDateTime end   = toLocalDateTime(rs.getLong("end"));
-                sessions.add(new Session(start, end));
+            try (PreparedStatement stmt = CXN.prepareStatement(sql)) {
+                stmt.setInt(1, Config.getBreakTime());
+                stmt.setInt(2, Config.getHotkey());
+                stmt.setInt(3, Config.getHideAtStart() ? 1 : 0);
+                stmt.executeUpdate();
             }
         }
-
-        return sessions;
     }
 
+    /**
+     * Reads the most recently recorded session from the database and sets it as
+     * active session in the Registry. The newest session is the one with the
+     * highest id, i.e. the row that was inserted last.
+     *
+     * @param  CXN  OPen connection to database
+     * @throws SQLException if the session can not be read
+     */
+    private void readSession(Connection CXN) throws SQLException
+    {
+        Registry Reg = Registry.get();
+
+        String sql = "SELECT id, start, end FROM sessions ORDER BY id DESC LIMIT 1";
+
+        try (Statement stmt = CXN.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            if (rs.next()) {
+                int id = rs.getInt("id");
+                LocalDateTime start = toLocalDateTime(rs.getLong("start"));
+                LocalDateTime end   = toLocalDateTime(rs.getLong("end"));
+                Reg.setSession(new Session(id, start, end));
+            }
+        }
+    }
+ 
     /**
      * Writes a Session back to the database. The last recorded session decides
      * how the session is stored: if the last session is not finished yet (its
@@ -346,55 +308,34 @@ public class Database
      * @param session the session to write
      * @throws SQLException if the session can not be written
      */
-    public void writeSession(Session session) throws SQLException
+    private void writeSession(Connection CXN) throws SQLException
     {
+        Registry Reg = Registry.get();
+
+        Session session = Reg.getSession();
         long start = toEpochMillis(session.getSessionStart());
-        boolean finished = !session.getSessionEnd().equals(LocalDateTime.MIN);
-        long end = finished ? toEpochMillis(session.getSessionEnd()) : 0L;
+        long end   = toEpochMillis(session.getSessionEnd());
+        int  id    = session.getSessionID();
 
-        Long overwriteId = getUnfinishedLastSessionId();
-
-        String sql = (overwriteId != null)
+        String sql = (id != 0)
                    ? "UPDATE sessions SET start = ?, end = ? WHERE id = ?"
                    : "INSERT INTO sessions (start, end) VALUES (?, ?)";
 
-        try (PreparedStatement stmt = dbCNX.prepareStatement(sql)) {
+        try (PreparedStatement stmt = CXN.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             stmt.setLong(1, start);
+            stmt.setLong(2, end);
 
-            if (finished)
-                stmt.setLong(2, end);
-            else
-                stmt.setNull(2, Types.INTEGER);
+            if (id != 0) {
+                stmt.setInt(3, id);
+                stmt.executeUpdate();
+            } else {
+                stmt.executeUpdate();
 
-            if (overwriteId != null)
-                stmt.setLong(3, overwriteId);
-
-            stmt.executeUpdate();
-        }
-    }
-
-    /**
-     * Returns the id of the last recorded session if that session is not
-     * finished yet, i.e. its end time stamp is NULL. If the last session is
-     * finished, or the database contains no sessions, null is returned.
-     *
-     * @return the id of the unfinished last session, or null
-     * @throws SQLException if the database can not be queried
-     */
-    private Long getUnfinishedLastSessionId() throws SQLException
-    {
-        String sql = "SELECT id, end FROM sessions ORDER BY id DESC LIMIT 1";
-
-        try (Statement stmt = dbCNX.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-
-            if (!rs.next())
-                return null;
-
-            long id = rs.getLong("id");
-            rs.getLong("end");
-
-            return rs.wasNull() ? id : null;
+                try (ResultSet keys = stmt.getGeneratedKeys()) {
+                    if (keys.next())
+                        session.setSessionID(keys.getInt(1));
+                }
+            }
         }
     }
 
@@ -424,16 +365,5 @@ public class Database
         return LocalDateTime.ofInstant(Instant.ofEpochMilli(epochMillis),
                                        ZoneId.systemDefault());
     }
-
-    /**
-     * Closes the database connection.
-     *
-     * @throws SQLException if the connection can not be closed
-     */
-    public void close() throws SQLException
-    {
-        if (dbCNX != null && !dbCNX.isClosed()) {
-            dbCNX.close();
-        }
-    }
+  
 }

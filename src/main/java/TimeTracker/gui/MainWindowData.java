@@ -17,6 +17,8 @@
 package TimeTracker.gui;
 
 import java.sql.SQLException;
+import java.time.Duration;
+import java.time.LocalDate;
 import java.util.ArrayList;
 
 import TimeTracker.Registry;
@@ -24,6 +26,10 @@ import TimeTracker.data.Database;
 import TimeTracker.data.Session;
 import static TimeTracker.gui.Notification.getDecission;
 import static TimeTracker.gui.Notification.showError;
+
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
@@ -31,52 +37,51 @@ import javafx.collections.ObservableList;
 
 /**
  *
- * @author grimm
+ * @author Matthias Grimm
  */
 public class MainWindowData
 {
     private final StringProperty errorMsg = new SimpleStringProperty();
     private final StringProperty successMsg = new SimpleStringProperty();
     
+    private final StringProperty elapsedTime = new SimpleStringProperty();
     private final ObservableList<Session> sessionListWeek =  FXCollections.observableArrayList();
+
+    /** Ticks once per minute to save data to the database. */
+    private Timeline systemClock;
 
 
     public MainWindowData()
     {
         Registry Reg = Registry.get();
-        Database dbHandle = Reg.getDbHandle();
+        Database DBase = Reg.getDBase();
         int ok;
 
         try {
-            Session active = Reg.getActiveSession();
-            if (active == null || active.isSessonFinished()) {
-                active = new Session();
-                dbHandle.writeSession(active);  // write unfinished session
+            Session session = Reg.getSession();
+            LocalDate today = LocalDate.now();
 
-            } else {  // session is still open
+            if (session == null || today.isAfter(session.getSessionStart().toLocalDate())) {
+                Reg.setSession(new Session());   // new day, new session
+
+            } else {    // still the same day, so...
                 ok = getDecission("Open Session", "What shall we do with the session?", "Continue", "Start new one");
-                if (ok == 1) {
-                    active.finishSession();
-                    dbHandle.writeSession(active);  // close open session
-                    active = new Session();
-                    dbHandle.writeSession(active);  // write unfinished session
-                }
+                if (ok == 1) Reg.setSession(new Session());   // start new one
             }
-            Reg.setActiveSession(active);
-    
-            ArrayList<Session> list = dbHandle.getSessionLog();
+
+            ArrayList<Session> list = DBase.getSessionLog();
             sessionListWeek.setAll(list);
     
         } catch (SQLException e) {
             showError("Can't find Session.\n" + e.getLocalizedMessage());
         }        
 
-    }
+        elapsedTime.set("00:00");
 
-    public Session getCurrentSession()
-    {
-        Registry Reg = Registry.get();
-        return Reg.getActiveSession();
+        systemClock = new Timeline(
+                new KeyFrame(javafx.util.Duration.seconds(1), ev -> handleClockEvents()));
+        systemClock.setCycleCount(Animation.INDEFINITE);
+        systemClock.play();
     }
 
     public ObservableList<Session> getSessionListWeek()
@@ -84,11 +89,33 @@ public class MainWindowData
         return sessionListWeek;
     }
 
+  /**
+     * Recomputes the elapsed time of the currently active session and writes it
+     * into {@link #textSessionDur} as HH:MM. Always reads the current session
+     * from the data model so it follows a session switch automatically. Runs on
+     * the JavaFX application thread (invoked by the {@link #sessionClock}).
+     */
+    private void handleClockEvents()
+    {
+        Registry Reg = Registry.get();
+
+        Duration elapsed = Reg.getSession().getRunningTime();
+        elapsedTime.set(String.format("%02d:%02d",
+                    elapsed.toHours(), elapsed.toMinutesPart()));
+
+        try {
+            Reg.getDBase().updateDatabase();
+
+        } catch (SQLException e) {
+            showError("Data could not be saved!");
+        }
+    }
 
     // -------------------------------------------------------------------------------- 
     //                                   Property Objects
     // -------------------------------------------------------------------------------- 
     public StringProperty errorMsgProperty()    { return errorMsg; }
     public StringProperty successMsgProperty()  { return successMsg; }
+    public StringProperty elapsedTimeProperty() { return elapsedTime; }
     
 }

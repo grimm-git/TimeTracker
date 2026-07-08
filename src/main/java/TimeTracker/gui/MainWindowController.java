@@ -18,7 +18,6 @@
 package TimeTracker.gui;
 
 import java.io.IOException;
-import java.sql.SQLException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -27,10 +26,9 @@ import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
 
 import TimeTracker.Defaults;
 import TimeTracker.Registry;
+import TimeTracker.data.Configuration;
 import TimeTracker.data.Session;
 import TimeTracker.util.GlobalHotkey;
-import javafx.animation.Animation;
-import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.beans.property.DoubleProperty;
@@ -98,10 +96,6 @@ extends WindowFX
     /** Active native-key recorder while learning; null when not learning. */
     private GlobalHotkey.Learner learner;
 
-    /** Ticks once per second to refresh the running session duration. */
-    private Timeline sessionClock;
-
-
     public MainWindowController(Stage stage) throws IOException
     {
         super(stage, "MainWindow.fxml", "timetracker.css");
@@ -123,10 +117,12 @@ extends WindowFX
      
         // Configuration
         Registry Reg = Registry.get();
-        cfgDBPath.setText(Reg.getDatabasePath().toString());
-        cfgHotkey.setText(GlobalHotkey.format(Reg.getHotkey()));
-        cfgBreaktime.setText(String.format("%d",Reg.getBreakTime()));
-        checkHideAtStart.setSelected(Reg.isHideAtStart());
+        Configuration Config = Reg.getConfig();
+
+        cfgDBPath.setText(Config.getDBPath().toString());
+        cfgHotkey.setText(GlobalHotkey.format(Config.getHotkey()));
+        cfgBreaktime.setText(String.format("%d",Config.getBreakTime()));
+        checkHideAtStart.setSelected(Config.getHideAtStart());
 
         // Persist an edited break time as soon as the field loses focus, so the
         // value is stored just like the hotkey and the "hide at start" flag.
@@ -135,16 +131,11 @@ extends WindowFX
         });
         
         // Current Session
-        Session current = dataModel.getCurrentSession();
-        textSessionDay.setText(current.getDayName());
-        textSessionDate.setText(current.getDate());
-        textSessionTime.setText(current.getTime());
-        updateSessionDuration();   // show a value before the first tick
-
-        // Refresh the running duration once per second while the window lives.
-        sessionClock = new Timeline(
-                new KeyFrame(javafx.util.Duration.seconds(1), ev -> updateSessionDuration()));
-        sessionClock.setCycleCount(Animation.INDEFINITE);
+        Session session = Reg.getSession();
+        textSessionDay.textProperty().bind(session.SessionDayProperty());
+        textSessionDate.textProperty().bind((session.SessionDateProperty()));
+        textSessionTime.textProperty().bind(session.SessionTimeProperty());
+        textSessionDur.textProperty().bind(dataModel.elapsedTimeProperty());
 
         // Table Week
         colDay.setCellValueFactory(new PropertyValueFactory<>("DayName"));
@@ -178,24 +169,9 @@ extends WindowFX
 
         stage.setOnShown(ev -> {
             adjustTableWidth(getVerticalScrollbar(tableWeek), weekTableBarWidthProperty);
-            sessionClock.play();
         });
-        stage.setOnHidden(ev -> sessionClock.stop());
     }
-
-    /**
-     * Recomputes the elapsed time of the currently active session and writes it
-     * into {@link #textSessionDur} as HH:MM. Always reads the current session
-     * from the data model so it follows a session switch automatically. Runs on
-     * the JavaFX application thread (invoked by the {@link #sessionClock}).
-     */
-    private void updateSessionDuration()
-    {
-        Duration elapsed = dataModel.getCurrentSession().getRunningTime();
-        textSessionDur.setText(String.format("%02d:%02d",
-                elapsed.toHours(), elapsed.toMinutesPart()));
-    }
-
+   
     private void adjustTableWidth(ScrollBar bar, DoubleProperty width)
     {
         if (bar == null) return;
@@ -221,29 +197,26 @@ extends WindowFX
     }
 
     /**
-     * Validates and persists the current content of the break time field to the
-     * database. Non-numeric or negative input is rejected: the field is restored
-     * to the stored value and the user is informed. On a database error the field
-     * is likewise reverted, so the display never disagrees with what is persisted.
+     * Validates and persists the current content of the break time field.
+     * Non-numeric or negative input is rejected: the field is restored
+     * to the stored value and the user is informed.
      */
     private void saveBreakTime()
     {
         Registry Reg = Registry.get();
+        Configuration Config = Reg.getConfig();
+
         try {
             int minutes = Integer.parseInt(cfgBreaktime.getText().trim());
             if (minutes < 0)
                 throw new NumberFormatException("break time must not be negative");
 
-            Reg.updateBreakTime(minutes);
+            Config.setBreakTime(minutes);
             clearMessage();
 
         } catch (NumberFormatException e) {
-            cfgBreaktime.setText(String.format("%d", Reg.getBreakTime()));
+            cfgBreaktime.setText(String.format("%d", Config.getBreakTime()));
             showError("Break time must be a whole number of minutes.");
-
-        } catch (SQLException e) {
-            cfgBreaktime.setText(String.format("%d", Reg.getBreakTime()));
-            showError("Could not save setting: " + e.getMessage());
         }
     }
 
@@ -256,12 +229,8 @@ extends WindowFX
     private void saveHideAtStart()
     {
         Registry Reg = Registry.get();
-        try {
-            Reg.updateHideAtStart(checkHideAtStart.isSelected());
-        } catch (SQLException e) {
-            checkHideAtStart.setSelected(Reg.isHideAtStart());
-            showError("Could not save setting: " + e.getMessage());
-        }
+        Configuration Config = Reg.getConfig();
+        Config.setHideAtStart(checkHideAtStart.isSelected());
     }
 
     @FXML
@@ -335,7 +304,10 @@ extends WindowFX
             learner = null;
         }
 
-        cfgHotkey.setText(GlobalHotkey.format(Registry.get().getHotkey()));
+        Registry Reg = Registry.get();
+        Configuration Config = Reg.getConfig();
+
+        cfgHotkey.setText(GlobalHotkey.format(Config.getHotkey()));
         clearMessage();
     }
 
@@ -380,16 +352,11 @@ extends WindowFX
         learner.stop();
         learner = null;
 
-        try {
-            Registry.get().updateHotkey(packedCombo);
-            cfgHotkey.setText(GlobalHotkey.format(Registry.get().getHotkey()));
-            showSuccess("New hotkey: " + GlobalHotkey.format(Registry.get().getHotkey()));
-
-        } catch (SQLException e) {
-            // The combination is already active; only persisting it failed.
-            cfgHotkey.setText(GlobalHotkey.format(Registry.get().getHotkey()));
-            showError("Hotkey is active but could not be saved: " + e.getLocalizedMessage());
-        }
+        Registry Reg = Registry.get();
+        Configuration Config = Reg.getConfig();
+        Config.setHotkey(packedCombo);
+        cfgHotkey.setText(GlobalHotkey.format(packedCombo));
+        showSuccess("New hotkey: " + GlobalHotkey.format(packedCombo));
     }
 
     private Callback<TableColumn<Session, LocalDateTime>, TableCell<Session, LocalDateTime>> formatDateTime = (tableColumn) -> {

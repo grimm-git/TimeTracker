@@ -78,6 +78,24 @@ public final class Defaults
     }
 
     /**
+     * DEFAULT_FIRST_BREAK is the time in a session that must be elappsed
+     * before the break time is considered.
+     */
+    public static final int DEFAULT_FIRST_BREAK = 4*60;
+     
+    /**
+     * DEFAULT_BREAK_TIME is the break duration in minutes used to seed the
+     * configuration table when a database is created for the first time.
+     */
+    public static final int DEFAULT_BREAK_TIME = 45;
+
+    /**
+     * DEFAULT_HIDE_AT_START is the seeded value of the "hide at start" flag
+     * stored in the configuration table (0 = disabled, 1 = enabled).
+     */
+    public static final boolean DEFAULT_HIDE_AT_START = false;
+
+    /**
      * Parses an ISO date (yyyy-MM-dd), falling back to the current date when the
      * value is missing or malformed.
      */
@@ -95,18 +113,6 @@ public final class Defaults
      * when no database path is given on the command line.
      */
     public static final String    DB_FILE_NAME = "timetracker.db";
-
-    /**
-     * DEFAULT_FIRST_BREAK is the time in a session that must be elappsed
-     * before the break time is considered.
-     * DEFAULT_BREAK_TIME is the break duration in minutes used to seed the
-     * configuration table when a database is created for the first time.
-     * DEFAULT_HIDE_AT_START is the seeded value of the "hide at start" flag
-     * stored in the configuration table (0 = disabled, 1 = enabled).
-     */
-    public static final int       DEFAULT_FIRST_BREAK = 4*60;
-    public static final int       DEFAULT_BREAK_TIME = 45;
-    public static final int       DEFAULT_HIDE_AT_START = 0;
 
     public static String getVersionString()
     {

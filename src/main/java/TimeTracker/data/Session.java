@@ -25,16 +25,26 @@ import java.util.Locale;
 
 import TimeTracker.Defaults;
 import TimeTracker.Registry;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 
 public class Session
 {
+    private int           SessionID;
     private LocalDateTime SessionStart;
     private LocalDateTime SessionEnd;
 
+    private final StringProperty SessionDay = new SimpleStringProperty();
+    private final StringProperty SessionDate = new SimpleStringProperty();
+    private final StringProperty SessionTime = new SimpleStringProperty();
+
     public Session()
     {
+        SessionID    = 0;
         SessionStart = LocalDateTime.now();
-        SessionEnd = LocalDateTime.MIN;
+        SessionEnd   = LocalDateTime.now();
+
+        setProperties();
     }
 
     /**
@@ -46,25 +56,23 @@ public class Session
      * @param end   the end time of the session, or LocalDateTime.MIN if the
      *              session has not been finished yet
      */
-    public Session(LocalDateTime start, LocalDateTime end)
+    public Session(int id, LocalDateTime start, LocalDateTime end)
     {
+        SessionID    = id;
         SessionStart = start;
-        SessionEnd = end;
+        SessionEnd   = end;
+
+        setProperties();
     }
 
-    /**
-     * Check, if the session has a valid end date
-     * 
-     * @return TRUE, if the session is still open
-     */
-    public boolean isSessonFinished()
+    public int getSessionID()
     {
-        return SessionEnd != LocalDateTime.MIN;
+        return SessionID;
     }
 
-    public void finishSession()
+    public void setSessionID(int id)
     {
-        SessionEnd = LocalDateTime.now();
+        SessionID = id;
     }
 
     public LocalDateTime getSessionStart()
@@ -77,27 +85,9 @@ public class Session
         return SessionEnd;
     }
 
-    /**
-     * Returns the day of week of the session start date as a short English
-     * name, e.g. "Mon", "Tue", "Wed".
-     *
-     * @return the abbreviated English name of the start day
-     */
     public String getDayName()
     {
-        return SessionStart.getDayOfWeek()
-                .getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
-    }
-
-    public String getDate()
-    {
-        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-        return SessionStart.format(fmt);
-    }
-    public String getTime()
-    {
-        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("HH:mm");
-        return SessionStart.format(fmt);
+        return SessionDay.get();
     }
 
     /**
@@ -122,12 +112,15 @@ public class Session
      */
     public Duration getWorkTime()
     {
+        Registry Reg = Registry.get();
+        Configuration Config = Reg.getConfig();
+
         Duration duration = getDuration();
 
         if (duration.toMinutes() < Defaults.DEFAULT_FIRST_BREAK)
             return duration;
 
-        return duration.minusMinutes(Registry.get().getBreakTime());
+        return duration.minusMinutes(Config.getBreakTime());
     }
 
     /**
@@ -142,4 +135,25 @@ public class Session
     {
         return Duration.between(SessionStart, LocalDateTime.now());
     }
+
+    private void setProperties()
+    {
+        // Sets the day of week of the session start date as a short name,
+        //  e.g. "Mon", "Tue", "Wed".
+        SessionDay.set(SessionStart.getDayOfWeek()
+                .getDisplayName(TextStyle.FULL, Locale.getDefault()));
+
+        DateTimeFormatter fmt1 = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+        SessionDate.set(SessionStart.format(fmt1));
+
+        DateTimeFormatter fmt2 = DateTimeFormatter.ofPattern("HH:mm");
+        SessionTime.set(SessionStart.format(fmt2));
+    }
+
+    // -------------------------------------------------------------------------------- 
+    //                                   Property Objects
+    // -------------------------------------------------------------------------------- 
+    public StringProperty SessionDayProperty()    { return SessionDay; }
+    public StringProperty SessionDateProperty()   { return SessionDate; }
+    public StringProperty SessionTimeProperty()   { return SessionTime; }
 }

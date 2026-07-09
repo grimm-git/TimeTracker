@@ -131,6 +131,7 @@ public class Session
         int day = SessionStart.getDayOfWeek().getValue();
         if (day == 6 && !Config.getWDSaturday()) return true;  // Saturday is workday?
         if (day == 7 && !Config.getWDSunday())   return true;  // Sunday is workday ?
+        if (Reg.isPublicHoliday(SessionStart.toLocalDate())) return true;
 
         return false;
     }

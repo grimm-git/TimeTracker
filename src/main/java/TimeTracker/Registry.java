@@ -18,7 +18,9 @@
 package TimeTracker;
 
 import java.sql.SQLException;
+import java.time.LocalDate;
 
+import TimeTracker.data.BankHolidays;
 import TimeTracker.data.Configuration;
 import TimeTracker.data.Database;
 import TimeTracker.data.Session;
@@ -36,6 +38,7 @@ public class Registry
     private Database DBase;
     private Session activeSession;
     private Configuration Config;
+    private BankHolidays Holidays;
 
     /**
      * This method is the global access to the Registry object, which is a Singleton
@@ -65,6 +68,7 @@ public class Registry
         activeSession = new Session();
         Config        = new Configuration();  // create configuration object with default values
         DBase         = null;
+        Holidays      = new BankHolidays();
     }
 
     /**
@@ -127,4 +131,10 @@ public class Registry
     {
         activeSession = active;
     }
+
+    public boolean isPublicHoliday(LocalDate testDate)
+    {
+        return Holidays == null ? false : Holidays.isBankHoliday(testDate);
+    }
+
 }

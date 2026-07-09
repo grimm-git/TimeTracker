@@ -114,6 +114,13 @@ public final class Defaults
      */
     public static final String    DB_FILE_NAME = "timetracker.db";
 
+    /**
+     * BANK_HOLIDAYS_FILE_NAME is the file name of the plain text list of bank
+     * holidays. It contains one date per line in ISO format (YYYY-MM-DD) and is
+     * looked up in the working directory next to the database file.
+     */
+    public static final String    BANK_HOLIDAYS_FILE = "bankholidays.db";
+
     public static String getVersionString()
     {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");

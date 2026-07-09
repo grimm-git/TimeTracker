@@ -91,6 +91,16 @@ java {
     }
 }
 
+distributions {
+    main {
+        distributionBaseName = 'TimeTracker'
+        contents {
+	        from "timetracker.ico"
+            from "bankholidays.db"
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 //  Self-contained runtime images (jlink)
 //

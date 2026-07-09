@@ -65,9 +65,9 @@ public class Registry
      */
     private Registry()
     {
-        activeSession = new Session();
-        Config        = new Configuration();  // create configuration object with default values
+        activeSession = null;
         DBase         = null;
+        Config        = new Configuration();  // create configuration object with default values
         Holidays      = new BankHolidays();
     }
 
@@ -117,7 +117,7 @@ public class Registry
             return true;
 
         } catch (SQLException e) {
-            Notification.showError("Global hotkey could not be registered.\n" + e.getLocalizedMessage());
+            Notification.showError("Database error\n" + e.getLocalizedMessage());
             return false;
         }
     }

@@ -23,7 +23,6 @@ import TimeTracker.data.Configuration;
 import TimeTracker.data.Database;
 import TimeTracker.data.Session;
 import TimeTracker.gui.Notification;
-import TimeTracker.util.GlobalHotkey;
 
 /**
  * Master data container class of the application
@@ -35,7 +34,6 @@ public class Registry
     private static volatile Registry instance = null;   // Singleton object instance 
 
     private Database DBase;
-    private GlobalHotkey hotkey;                 // live, registered global hook
     private Session activeSession;
     private Configuration Config;
 
@@ -74,8 +72,7 @@ public class Registry
      */
     public void close()
     {
-        if (hotkey != null)
-            hotkey.unregister();
+        Config.clrHotkey();
 
         try {
             DBase.updateDatabase(); // save Session and Configuration

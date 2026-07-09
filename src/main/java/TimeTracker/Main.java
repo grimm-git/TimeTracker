@@ -100,12 +100,9 @@ extends Application
         // Install a system-wide hotkey (CTRL+SHIFT+F10) that re-shows the window
         // even when the application has no focus. Failure to install the native
         // hook (e.g. on a Wayland session) must not prevent the app from running.
-        GlobalHotkey hotkey = new GlobalHotkey(mw::show);
-        hotkey.setHotkey(Config.getHotkey());   // use the persisted combo
-
         try {
-            hotkey.register();
-            Config.setHotkey(hotkey.getHotkey());
+            GlobalHotkey hotkey = new GlobalHotkey(mw::show);
+            Config.setHotkey(hotkey);
 
         } catch (NativeHookException e) {
             Platform.exit();

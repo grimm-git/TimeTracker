@@ -19,6 +19,8 @@ package TimeTracker.data;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import com.github.kwhat.jnativehook.NativeHookException;
+
 import TimeTracker.Defaults;
 import TimeTracker.util.GlobalHotkey;
 
@@ -31,6 +33,8 @@ public class Configuration
     private boolean mHideAtStart;
     private boolean mWDSaturday;
     private boolean mWDSunday;
+
+    private GlobalHotkey hotkey;                 // live, registered global hook
 
     public Configuration()
     {
@@ -78,10 +82,26 @@ public class Configuration
         return mHotkey;
     }
 
+    public void setHotkey(GlobalHotkey objHotkey) throws NativeHookException 
+    {
+        this.hotkey = objHotkey;
+        hotkey.setHotkey(mHotkey);
+        hotkey.register();
+    }
+
     public void setHotkey(int arg)
     {
         mHotkey = arg;
         mDirty = true;
+
+        if (hotkey != null)
+            hotkey.setHotkey(mHotkey);
+    }
+
+    public void clrHotkey()
+    {
+        hotkey.unregister();
+        hotkey = null;
     }
 
     /** @return the "hide at start" flag (false = disabled, true = enabled) */

@@ -12,3 +12,14 @@ If, for any reason, TimeTracker terminate ungracefully, caused by a crash or a k
   - Continue the session
   - Finish it and start a new session
 
+
+## build packages for Linux or Windows
+The build chain supports multi-system packages but not at once
+  - gradlew createZip
+    Create a zip package for Linux, jlink package includes the JDK
+  - gradlew createZip -Pplatform=win
+    Create a zip package for Windows, jlink package includes the JDK
+  - gradlew createExe
+    Create an executable for Windows containing the Java app
+    Requires an JDK installed on the target system
+

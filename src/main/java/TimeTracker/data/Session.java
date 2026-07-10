@@ -34,9 +34,10 @@ public class Session
     private LocalDateTime SessionStart;
     private LocalDateTime SessionEnd;
 
-    private final StringProperty SessionDay = new SimpleStringProperty();
-    private final StringProperty SessionDate = new SimpleStringProperty();
-    private final StringProperty SessionTime = new SimpleStringProperty();
+    private final StringProperty Day = new SimpleStringProperty();
+    private final StringProperty Date = new SimpleStringProperty();
+    private final StringProperty Start = new SimpleStringProperty();
+    private final StringProperty End = new SimpleStringProperty();
 
     public Session()
     {
@@ -65,12 +66,12 @@ public class Session
         setProperties();
     }
 
-    public int getSessionID()
+    public int getID()
     {
         return SessionID;
     }
 
-    public void setSessionID(int id)
+    public void setID(int id)
     {
         SessionID = id;
     }
@@ -85,9 +86,14 @@ public class Session
         return SessionEnd;
     }
 
+    public void setEndToNow()
+    {
+        SessionEnd = LocalDateTime.now();
+    }
+
     public String getDayName()
     {
-        return SessionDay.get();
+        return Day.get();
     }
 
     /**
@@ -123,6 +129,17 @@ public class Session
         return duration.minusMinutes(Config.getBreakTime());
     }
 
+    /**
+     * Returns the elapsed time between the session start and the current time.
+     * Unlike {@link #getWorkTime()} this ignores breaks.
+     *
+     * @return the time elapsed since the session started without breaks
+     */
+    public Duration getRunningTime()
+    {
+        return Duration.between(SessionStart, SessionEnd);
+    }
+
     public boolean isBankHoliday()
     {
         Registry Reg = Registry.get();
@@ -136,37 +153,26 @@ public class Session
         return false;
     }
 
-    /**
-     * Returns the elapsed time between the session start and the current time.
-     * Unlike {@link #getWorkTime()} this ignores the stored end time and is
-     * meant for an open, still running session whose live duration should be
-     * displayed.
-     *
-     * @return the time elapsed since the session started
-     */
-    public Duration getRunningTime()
-    {
-        return Duration.between(SessionStart, LocalDateTime.now());
-    }
-
     private void setProperties()
     {
         // Sets the day of week of the session start date as a short name,
         //  e.g. "Mon", "Tue", "Wed".
-        SessionDay.set(SessionStart.getDayOfWeek()
+        Day.set(SessionStart.getDayOfWeek()
                 .getDisplayName(TextStyle.FULL, Locale.getDefault()));
 
         DateTimeFormatter fmt1 = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-        SessionDate.set(SessionStart.format(fmt1));
+        Date.set(SessionStart.format(fmt1));
 
         DateTimeFormatter fmt2 = DateTimeFormatter.ofPattern("HH:mm");
-        SessionTime.set(SessionStart.format(fmt2));
+        Start.set(SessionStart.format(fmt2));
+        End.set(SessionEnd.format(fmt2));
     }
 
     // -------------------------------------------------------------------------------- 
     //                                   Property Objects
     // -------------------------------------------------------------------------------- 
-    public StringProperty SessionDayProperty()    { return SessionDay; }
-    public StringProperty SessionDateProperty()   { return SessionDate; }
-    public StringProperty SessionTimeProperty()   { return SessionTime; }
+    public StringProperty DayProperty()    { return Day; }
+    public StringProperty DateProperty()   { return Date; }
+    public StringProperty StartProperty()  { return Start; }
+    public StringProperty EndProperty()    { return End; }
 }

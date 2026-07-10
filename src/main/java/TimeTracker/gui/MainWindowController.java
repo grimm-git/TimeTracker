@@ -69,7 +69,8 @@ extends WindowFX
 
     @FXML  private TextField textSessionDay;
     @FXML  private TextField textSessionDate;
-    @FXML  private TextField textSessionTime;
+    @FXML  private TextField textSessionStart;
+    @FXML  private TextField textSessionEnd;
     @FXML  private TextField textSessionDur;
 
     // Tab View: Week
@@ -135,9 +136,10 @@ extends WindowFX
         // Current Session
         Session session = Reg.getSession();
         textSessionDay.textProperty().addListener((obs, oldText, newText) -> updateWeekDayStyles());
-        textSessionDay.textProperty().bind(session.SessionDayProperty());
-        textSessionDate.textProperty().bind((session.SessionDateProperty()));
-        textSessionTime.textProperty().bind(session.SessionTimeProperty());
+        textSessionDay.textProperty().bind(session.DayProperty());
+        textSessionDate.textProperty().bind((session.DateProperty()));
+        textSessionStart.textProperty().bind(session.StartProperty());
+        textSessionEnd.textProperty().bind(session.EndProperty());
         textSessionDur.textProperty().bind(dataModel.elapsedTimeProperty());
 
 

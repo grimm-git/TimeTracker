@@ -21,6 +21,7 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.Line?>
 <?import javafx.scene.text.Font?>
 
 <VBox xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
@@ -99,14 +100,21 @@
             <Label text="Session:" />
             <TextField fx:id="textSessionDay" alignment="CENTER" editable="false" focusTraversable="false" prefWidth="90.0" promptText="Montag" />
             <TextField fx:id="textSessionDate" alignment="CENTER" editable="false" focusTraversable="false" prefWidth="100.0" promptText="01.01.2000" />
-            <TextField fx:id="textSessionTime" alignment="CENTER" editable="false" focusTraversable="false" prefWidth="70.0" promptText="HH:MM" />
+            <TextField fx:id="textSessionStart" alignment="CENTER" editable="false" focusTraversable="false" prefWidth="70.0" promptText="HH:MM" />
+            <Line endX="5.0" startX="-5.0" />
+            <TextField fx:id="textSessionEnd" alignment="CENTER" focusTraversable="false" prefWidth="70.0" promptText="HH:MM" />
             <VBox alignment="CENTER" HBox.hgrow="ALWAYS">
                <children>
-                  <Label text="=&gt;">
-                     <padding>
-                        <Insets left="10.0" right="10.0" />
-                     </padding>
-                  </Label>
+                  <Line endX="5.0" startX="-5.0">
+                     <VBox.margin>
+                        <Insets left="5.0" right="5.0" />
+                     </VBox.margin>
+                  </Line>
+                  <Line endX="5.0" startX="-5.0">
+                     <VBox.margin>
+                        <Insets left="5.0" right="5.0" top="4.0" />
+                     </VBox.margin>
+                  </Line>
                </children>
             </VBox>
             <TextField fx:id="textSessionDur" alignment="CENTER" editable="false" focusTraversable="false" prefWidth="70.0" promptText="HH:MM" />
@@ -211,7 +219,7 @@
             </Label>
             <HBox alignment="CENTER_RIGHT" spacing="5.0" HBox.hgrow="ALWAYS">
                <children>
-                  <Button fx:id="btnClose" mnemonicParsing="false" onAction="#handleAction" onKeyPressed="#handleKeys" text="Close">
+                  <Button fx:id="btnClose" mnemonicParsing="false" onAction="#handleAction" onKeyPressed="#handleKeys" text="Hide">
                      <graphic>
                         <ImageView pickOnBounds="true" preserveRatio="true">
                            <image>

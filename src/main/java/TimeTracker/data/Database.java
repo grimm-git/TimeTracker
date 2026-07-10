@@ -118,7 +118,7 @@ public class Database
         ArrayList<Session> sessions = new ArrayList<>();
 
         String sql = "SELECT id, start, end FROM sessions "
-                   + "WHERE end IS NOT NULL ORDER BY id DESC LIMIT 10";
+                   + "ORDER BY id DESC LIMIT 10 OFFSET 1";
 
         Connection CXN = openDatabase();
         try (Statement stmt = CXN.createStatement();
@@ -328,7 +328,7 @@ public class Database
         Session session = Reg.getSession();
         long start = toEpochMillis(session.getSessionStart());
         long end   = toEpochMillis(session.getSessionEnd());
-        int  id    = session.getSessionID();
+        int  id    = session.getID();
 
         String sql = (id != 0)
                    ? "UPDATE sessions SET start = ?, end = ? WHERE id = ?"
@@ -346,7 +346,7 @@ public class Database
 
                 try (ResultSet keys = stmt.getGeneratedKeys()) {
                     if (keys.next())
-                        session.setSessionID(keys.getInt(1));
+                        session.setID(keys.getInt(1));
                 }
             }
         }

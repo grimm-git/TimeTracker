@@ -98,7 +98,9 @@ public class MainWindowData
     private void handleClockEvents()
     {
         Registry Reg = Registry.get();
+        Session session = Reg.getSession();
 
+        session.setEndToNow();
         Duration elapsed = Reg.getSession().getRunningTime();
         elapsedTime.set(String.format("%02d:%02d",
                     elapsed.toHours(), elapsed.toMinutesPart()));

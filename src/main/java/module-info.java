@@ -4,7 +4,8 @@ module TimeTracker {
     requires java.sql;
     requires com.github.kwhat.jnativehook;
     requires org.xerial.sqlitejdbc;
-    requires java.rmi;   // JDBC driver, loaded as a java.sql.Driver service
+    requires java.rmi;
+    requires javafx.graphics;   // JDBC driver, loaded as a java.sql.Driver service
 
     // JavaFX (and JNativeHook) reflect into these packages at runtime; without
     // the opens the app links fine but throws IllegalAccessException at launch,

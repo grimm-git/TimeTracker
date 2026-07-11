@@ -219,7 +219,7 @@
             </Label>
             <HBox alignment="CENTER_RIGHT" spacing="5.0" HBox.hgrow="ALWAYS">
                <children>
-                  <Button fx:id="btnClose" mnemonicParsing="false" onAction="#handleAction" onKeyPressed="#handleKeys" text="Hide">
+                  <Button fx:id="btnHide" mnemonicParsing="false" onAction="#handleAction" onKeyPressed="#handleKeys" text="Hide">
                      <graphic>
                         <ImageView pickOnBounds="true" preserveRatio="true">
                            <image>

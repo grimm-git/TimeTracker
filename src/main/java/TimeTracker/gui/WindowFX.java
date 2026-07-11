@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Matthias Grimm 
+ * Copyright (C) 2026 Matthias Grimm <codingjoker@web.de>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -35,6 +35,7 @@ import javafx.scene.input.MouseEvent;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.Window;
+import javafx.stage.WindowEvent;
 
 /**
  *
@@ -71,9 +72,16 @@ public abstract class WindowFX
         
         stage.setScene(scene);
         stage.sizeToScene();
-        stage.setOnCloseRequest(ev -> this.close());
+        stage.setOnCloseRequest(ev -> this.handleCloseRequest(ev));
     }
     
+    private void handleCloseRequest(WindowEvent ev)
+    {
+        ev.consume();
+        storePosition();
+        close();
+    }
+
     /**
      * Show the dialog and return.
      */
@@ -107,12 +115,11 @@ public abstract class WindowFX
     }
 
     /**
-     * Close the dialog
+     * Close the Window
      */
     protected void close()
     {
-        posX = stage.getX();
-        posY = stage.getY();
+        storePosition();
         stage.close();
     }
 
@@ -127,6 +134,12 @@ public abstract class WindowFX
             return true;
         }
         return false;
+    }
+
+    protected void storePosition()
+    {
+        posX = stage.getX();
+        posY = stage.getY();
     }
 
     // ----------------------------------------------------------------------------------- 

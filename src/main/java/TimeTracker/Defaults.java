@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 Matthias Grimm
+ * Copyright (C) 2026 Matthias Grimm <codingjoker@web.de>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -113,6 +113,7 @@ public final class Defaults
      * when no database path is given on the command line.
      */
     public static final String    DB_FILE_NAME = "timetracker.db";
+    public static final String    DB_EXPORT_NAME = "sessions.csv";
 
     /**
      * BANK_HOLIDAYS_FILE_NAME is the file name of the plain text list of bank

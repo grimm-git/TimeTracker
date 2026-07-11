@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 Matthias Grimm
+ * Copyright (C) 2026 Matthias Grimm <codingjoker@web.de>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,6 +16,8 @@
  */
 package TimeTracker.data;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -24,10 +26,14 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
 import java.util.ArrayList;
+import java.util.Locale;
 
 import TimeTracker.Defaults;
 import TimeTracker.Registry;
@@ -136,6 +142,90 @@ public class Database
         return sessions;
     }
 
+    /**
+     * Writes every recorded session to the given file in CSV format, ordered
+     * from the most recent session to the oldest. The file is created if it does
+     * not exist and overwritten if it does. Each row holds the session id, the
+     * day of week, the date, the start and end time and the raw duration; the
+     * end and duration are left empty for a session that has not finished yet.
+     *
+     * @param filePath the CSV file to write the sessions to
+     * @throws SQLException if the sessions can not be read from the database
+     * @throws IOException  if the file can not be written
+     */
+    public void dumpAllSessions(Path filePath) throws SQLException, IOException
+    {
+        DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+        DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("HH:mm");
+
+        String sql = "SELECT id, start, end FROM sessions ORDER BY id DESC";
+
+        Connection CXN = openDatabase();
+        try (BufferedWriter writer = Files.newBufferedWriter(filePath);
+             Statement stmt = CXN.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            writer.write("id,day,date,start,end,duration");
+            writer.newLine();
+
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                LocalDateTime start = toLocalDateTime(rs.getLong("start"));
+
+                long endMillis = rs.getLong("end");
+                boolean finished = !rs.wasNull();
+                LocalDateTime end = finished ? toLocalDateTime(endMillis) : null;
+
+                String day      = start.getDayOfWeek()
+                                       .getDisplayName(TextStyle.FULL, Locale.getDefault());
+                String date     = start.format(dateFmt);
+                String startStr = start.format(timeFmt);
+                String endStr   = finished ? end.format(timeFmt) : "";
+                String duration = finished ? formatDuration(Duration.between(start, end)) : "";
+
+                writer.write(csv(String.valueOf(id))
+                           + "," + csv(day)
+                           + "," + csv(date)
+                           + "," + csv(startStr)
+                           + "," + csv(endStr)
+                           + "," + csv(duration));
+                writer.newLine();
+            }
+        } finally {
+            CXN.close();
+        }
+    }
+
+    /**
+     * Formats a Duration as HH:mm, e.g. a duration of 90 minutes becomes
+     * "01:30". Hours are not capped at 24 so long sessions stay readable.
+     *
+     * @param duration the duration to format
+     * @return the duration rendered as HH:mm
+     */
+    private static String formatDuration(Duration duration)
+    {
+        long hours   = duration.toHours();
+        long minutes = duration.toMinutesPart();
+        return String.format("%02d:%02d", hours, minutes);
+    }
+
+    /**
+     * Escapes a value for CSV output. A field containing a comma, a double
+     * quote or a line break is wrapped in double quotes with any embedded
+     * double quotes doubled, as required by RFC 4180.
+     *
+     * @param value the raw field value
+     * @return the value safe to place between commas in a CSV row
+     */
+    private static String csv(String value)
+    {
+        if (value.contains(",") || value.contains("\"")
+         || value.contains("\n") || value.contains("\r")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
+    }
     /******************************************************************************
      *                               Private methods                              *
      ******************************************************************************/

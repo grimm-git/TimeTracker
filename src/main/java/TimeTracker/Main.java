@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 Matthias Grimm
+ * Copyright (C) 2026 Matthias Grimm <codingjoker@web.de>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -101,7 +101,7 @@ extends Application
         // even when the application has no focus. Failure to install the native
         // hook (e.g. on a Wayland session) must not prevent the app from running.
         try {
-            GlobalHotkey hotkey = new GlobalHotkey(mw::show);
+            GlobalHotkey hotkey = new GlobalHotkey(mw::handleHotkey);
             Config.setHotkey(hotkey);
 
         } catch (NativeHookException e) {

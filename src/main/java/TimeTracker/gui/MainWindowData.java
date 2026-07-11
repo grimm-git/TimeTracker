@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 Matthias Grimm
+ * Copyright (C) 2026 Matthias Grimm <codingjoker@web.de>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,11 +16,15 @@
  */
 package TimeTracker.gui;
 
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 
+import TimeTracker.Defaults;
 import TimeTracker.Registry;
 import TimeTracker.data.Database;
 import TimeTracker.data.Session;
@@ -111,6 +115,15 @@ public class MainWindowData
         } catch (SQLException e) {
             showError("Data could not be saved!");
         }
+    }
+
+    public void exportSessions() throws SQLException, IOException
+    {
+        Registry Reg = Registry.get();
+        Database DBase = Reg.getDBase();
+     
+        Path exportPath = Paths.get(System.getProperty("user.dir"), Defaults.DB_EXPORT_NAME);
+        DBase.dumpAllSessions(exportPath);
     }
 
     // -------------------------------------------------------------------------------- 

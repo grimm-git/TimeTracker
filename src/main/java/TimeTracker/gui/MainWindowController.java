@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Matthias Grimm 
+ * Copyright (C) 2026 Matthias Grimm <codingjoker@web.de>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -18,6 +18,8 @@
 package TimeTracker.gui;
 
 import java.io.IOException;
+import java.nio.file.Paths;
+import java.sql.SQLException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -49,6 +51,7 @@ import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
 import TimeTracker.Defaults;
 import TimeTracker.Registry;
 import TimeTracker.data.Configuration;
+import TimeTracker.data.Database;
 import TimeTracker.data.Session;
 import TimeTracker.util.GlobalHotkey;
 
@@ -60,7 +63,7 @@ import TimeTracker.util.GlobalHotkey;
 public class MainWindowController
 extends WindowFX
 {
-    @FXML  private Button  btnClose;
+    @FXML  private Button  btnHide;
     @FXML  private Label  errorMsg;
     @FXML  private MenuItem miOpen;
     @FXML  private MenuItem miExit;
@@ -189,6 +192,31 @@ extends WindowFX
             });
     }
 
+    /**
+     * The close() nmethod overwrites the close() method of WindowsFX and adds a
+     * confirmation dialog, so the user has the chance to change his mind.
+     */
+    @Override
+    protected void close()
+    {
+        int rc = Notification.getDecission("Exit TimeTracker", "Should the time tracking been stopped?", "yes", "No");
+        if (rc == 0) {
+            storePosition();
+            Platform.exit();
+        }
+    }
+
+    /**
+     * This method hides the application. Because JavaFX does not distinguish between close() and hide()
+     * and will terminate the application when it's last window has been closed, hiding will only work,
+     * if  Platform.setImplicitExit(false); is set.
+     */
+    private void hide()
+    {
+        storePosition();
+        super.close();
+    }
+
     // ---------------------------------------------------------------------------------------- 
     //                                      FXML GUI handler
     // ---------------------------------------------------------------------------------------- 
@@ -197,13 +225,72 @@ extends WindowFX
     {
         if (learningHotkey) return;
 
-        if (ev.getSource() == btnClose) close();
+        if (ev.getSource() == btnHide) hide();
         if (ev.getSource() == btnLearnHotkey) learnHotkey();
         if (ev.getSource() == cfgBreaktime) saveBreakTime();
         if (ev.getSource() == checkHideAtStart) saveOption(0);
         if (ev.getSource() == checkWDSaturday) saveOption(1);
         if (ev.getSource() == checkWDSunday) saveOption( 2);
     }
+
+    @FXML
+    protected void handleKeys(KeyEvent ev)
+    {
+        if (ev.getEventType() == KeyEvent.KEY_PRESSED) {
+            if (ev.getCode() == KeyCode.ENTER) {
+                if (ev.getSource() == btnHide) hide();
+                if (ev.getSource() == btnLearnHotkey) learnHotkey();
+            }
+        } else if (ev.getEventType() == KeyEvent.KEY_TYPED) {
+            String str = ev.getCharacter();
+            for (int n = 0; n < str.length(); n++) {
+                char c = str.charAt(n);
+                if (Character.isLetterOrDigit(c) || " -_()".indexOf(c) >= 0) {
+                    clearMessage();
+                }
+            }
+        }
+    }
+
+    @FXML
+    protected void handleMenus(ActionEvent event) throws IOException
+    {
+        if (learningHotkey) return;
+
+        // File Menu
+        if (event.getSource() == miExit) {
+            close();
+
+        } else if (event.getSource() == miExport) {
+            try {
+                dataModel.exportSessions();
+                showSuccess("Sessions exported.");
+
+            } catch (SQLException | IOException e) {
+                showError("Export failed:" + e.getLocalizedMessage());
+            }
+
+        // Help Menu
+        } else if (event.getSource() == miAbout) {
+            AboutController ctrl = new AboutController();
+            ctrl.show();
+        }
+    }   
+
+    /**
+     * Handles the event of an pressed Hotkey.
+     */
+    public void handleHotkey()
+    {
+        if (stage.isShowing())
+            hide();
+        else
+            show();
+    }
+
+    // ---------------------------------------------------------------------------------------- 
+    //                                      Main Window Function
+    // ---------------------------------------------------------------------------------------- 
 
     /**
      * Validates and persists the current content of the break time field.
@@ -254,45 +341,6 @@ extends WindowFX
         tableWeek.refresh();
         updateWeekDayStyles();
     }
-
-    @FXML
-    protected void handleKeys(KeyEvent ev)
-    {
-        if (ev.getEventType() == KeyEvent.KEY_PRESSED) {
-            if (ev.getCode() == KeyCode.ENTER) {
-                if (ev.getSource() == btnClose) close();
-                if (ev.getSource() == btnLearnHotkey) learnHotkey();
-            }
-        } else if (ev.getEventType() == KeyEvent.KEY_TYPED) {
-            String str = ev.getCharacter();
-            for (int n = 0; n < str.length(); n++) {
-                char c = str.charAt(n);
-                if (Character.isLetterOrDigit(c) || " -_()".indexOf(c) >= 0) {
-                    clearMessage();
-                }
-            }
-        }
-    }
-
-    @FXML
-    protected void handleMenus(ActionEvent event) throws IOException
-    {
-        if (learningHotkey) return;
-
-        // File Menu
-        if (event.getSource() == miExit) {
-            Platform.exit();
-
-        } else if (event.getSource() == miExport) {
-
-            
-        // Help Menu
-        } else if (event.getSource() == miAbout) {
-            AboutController ctrl = new AboutController();
-            ctrl.show();
-        }
-    }   
-
 
     /**
      * Handles clicks on the learn toggle button. Toggling it on starts the
@@ -380,6 +428,10 @@ extends WindowFX
         cfgHotkey.setText(GlobalHotkey.format(packedCombo));
         showSuccess("New hotkey: " + GlobalHotkey.format(packedCombo));
     }
+
+    // ---------------------------------------------------------------------------------------- 
+    //                                      JavaFX Callbacks
+    // ---------------------------------------------------------------------------------------- 
 
     private Callback<TableColumn<Session, String>, TableCell<Session, String>> formatWeekDay = (tableColumn) -> {
         TableCell<Session, String> tableCell = new TableCell<>() {

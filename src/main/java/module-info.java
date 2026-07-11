@@ -6,6 +6,7 @@ module TimeTracker {
     requires org.xerial.sqlitejdbc;
     requires java.rmi;
     requires javafx.graphics;   // JDBC driver, loaded as a java.sql.Driver service
+    requires com.dustinredmond.fxtrayicon;   // system tray icon, itself pulls in javafx.swing
 
     // JavaFX (and JNativeHook) reflect into these packages at runtime; without
     // the opens the app links fine but throws IllegalAccessException at launch,

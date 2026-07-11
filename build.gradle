@@ -41,6 +41,7 @@ dependencies {
     // sqlite-jdbc's module descriptor has a mandatory 'requires org.slf4j',
     // so the module graph needs slf4j-api present or resolution/jlink fails.
     implementation "org.slf4j:slf4j-api:2.0.13"
+    implementation 'com.dustinredmond.fxtrayicon:FXTrayIcon:4.2.3'
 
     // JavaFX modules for compiling/running and for the jlink image are
     // contributed by the javafx plugin below, with the classifier chosen by its
@@ -213,4 +214,13 @@ tasks.register('createZip', Zip) {
     archiveClassifier = targetOS == 'win' ? 'windows' : 'linux'
     destinationDirectory = layout.buildDirectory.dir('distributions')
 }
+
+// Add further data files to the launch4j output tree
+tasks.register('copyExeData', Copy) {
+    from 'bankholidays.db'
+    // from 'timetracker.ico'   // add any other loose runtime files here
+    into launch4j.outputDirectory
+}
+tasks.named('createExe') { finalizedBy 'copyExeData' }
+
 

@@ -18,7 +18,6 @@
 package TimeTracker.gui;
 
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -51,7 +50,6 @@ import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
 import TimeTracker.Defaults;
 import TimeTracker.Registry;
 import TimeTracker.data.Configuration;
-import TimeTracker.data.Database;
 import TimeTracker.data.Session;
 import TimeTracker.util.GlobalHotkey;
 
@@ -180,6 +178,12 @@ extends WindowFX
         stage.setOnShown(ev -> {
             adjustTableWidth(getVerticalScrollbar(tableWeek), weekTableBarWidthProperty);
         });
+
+        if (Reg.getSystemTray() != null) {
+            MenuItem miTrayExit = new MenuItem("Exit TimeTracker");
+		    miTrayExit.setOnAction(e -> close());
+            Reg.getSystemTray().addMenuItem(miTrayExit);
+        }
     }
    
     private void adjustTableWidth(ScrollBar bar, DoubleProperty width)

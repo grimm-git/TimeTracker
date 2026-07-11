@@ -54,7 +54,6 @@ public class MainWindowData
     /** Ticks once per minute to save data to the database. */
     private Timeline systemClock;
 
-
     public MainWindowData()
     {
         Registry Reg = Registry.get();

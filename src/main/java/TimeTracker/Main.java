@@ -25,6 +25,7 @@ import com.github.kwhat.jnativehook.NativeHookException;
 import TimeTracker.data.Configuration;
 import TimeTracker.gui.MainWindowController;
 import TimeTracker.gui.SplashController;
+import TimeTracker.gui.SystemTrayIcon;
 import TimeTracker.util.GlobalHotkey;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -82,6 +83,8 @@ extends Application
             Platform.exit();
             return;
         }
+
+        Reg.setSystemTray(new SystemTrayIcon(stage,  "timetracker_16x16.png"));
 
         MainWindowController mw = new MainWindowController(stage);
         stage.getIcons().add(mw.getImageResource("timetracker_16x16.png"));

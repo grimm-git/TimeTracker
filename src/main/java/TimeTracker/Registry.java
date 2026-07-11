@@ -25,6 +25,7 @@ import TimeTracker.data.Configuration;
 import TimeTracker.data.Database;
 import TimeTracker.data.Session;
 import TimeTracker.gui.Notification;
+import TimeTracker.gui.SystemTrayIcon;
 
 /**
  * Master data container class of the application
@@ -39,6 +40,7 @@ public class Registry
     private Session activeSession;
     private Configuration Config;
     private BankHolidays Holidays;
+    private SystemTrayIcon TrayIcon;
 
     /**
      * This method is the global access to the Registry object, which is a Singleton
@@ -69,6 +71,7 @@ public class Registry
         DBase         = null;
         Config        = new Configuration();  // create configuration object with default values
         Holidays      = new BankHolidays();
+        TrayIcon      = null;
     }
 
     /**
@@ -77,6 +80,9 @@ public class Registry
     public void close()
     {
         Config.clrHotkey();
+        
+        if (TrayIcon != null)
+            TrayIcon.remove();
 
         try {
             DBase.updateDatabase(); // save Session and Configuration
@@ -137,4 +143,13 @@ public class Registry
         return Holidays == null ? false : Holidays.isBankHoliday(testDate);
     }
 
+    public SystemTrayIcon getSystemTray()
+    {
+        return TrayIcon;
+    }
+
+    public void setSystemTray(SystemTrayIcon obj)
+    {
+        TrayIcon = obj;
+    }
 }

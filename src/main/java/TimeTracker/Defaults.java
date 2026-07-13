@@ -19,6 +19,7 @@ package TimeTracker;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Properties;
 
@@ -84,10 +85,16 @@ public final class Defaults
     public static final int DEFAULT_FIRST_BREAK = 4*60;
      
     /**
-     * DEFAULT_BREAK_TIME is the break duration in minutes used to seed the
+     * DEFAULT_BREAK_TIME is the time after that a break in sinserted in the day
+     */
+    public static final int DEFAULT_BREAK_TIME_H = 12;
+    public static final int DEFAULT_BREAK_TIME_M = 0;
+
+    /**
+     * DEFAULT_BREAK_LENGTH is the break duration in minutes used to seed the
      * configuration table when a database is created for the first time.
      */
-    public static final int DEFAULT_BREAK_TIME = 45;
+    public static final int DEFAULT_BREAK_LENGTH = 45;
 
     /**
      * DEFAULT_HIDE_AT_START is the seeded value of the "hide at start" flag

@@ -18,6 +18,7 @@ package TimeTracker.data;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalTime;
 
 import com.github.kwhat.jnativehook.NativeHookException;
 
@@ -28,11 +29,13 @@ public class Configuration
 {   
     private boolean mDirty;
     private Path mDBPath;
-    private int mBreakTime;
+    private LocalTime mBreakTime;
+    private int mBreakLength;
     private int mHotkey;
     private boolean mHideAtStart;
     private boolean mWDSaturday;
     private boolean mWDSunday;
+    private boolean mHasBreak;
 
     private GlobalHotkey hotkey;                 // live, registered global hook
 
@@ -40,9 +43,11 @@ public class Configuration
     {
         mDirty       = false;
         mDBPath      = Paths.get(System.getProperty("user.dir"), Defaults.DB_FILE_NAME);
-        mBreakTime   = Defaults.DEFAULT_BREAK_TIME;
+        mBreakTime   = LocalTime.of(Defaults.DEFAULT_BREAK_TIME_H, Defaults.DEFAULT_BREAK_TIME_M);
+        mBreakLength = Defaults.DEFAULT_BREAK_LENGTH;
         mHotkey      = GlobalHotkey.DEFAULT_HOTKEY;
         mHideAtStart = Defaults.DEFAULT_HIDE_AT_START;
+        mHasBreak    = false;
         mWDSaturday  = false;
         mWDSunday    = false;
     }
@@ -64,16 +69,39 @@ public class Configuration
     }
 
 
-    /** @return the break duration in minutes */
-    public int getBreakTime()
+    /** @return the time where after the break should be inserted */
+    public LocalTime getBreakTime()
     {
         return mBreakTime;
     }
 
-    public void setBreakTime(int arg)
+    public void setBreakTime(LocalTime time)
     {
-        mBreakTime = arg;
+        mBreakTime = time;
         mDirty = true;
+    }
+
+    /** @return the break duration in minutes */
+    public int getBreakLength()
+    {
+        return mBreakLength;
+    }
+
+    public void setBreakLength(int arg)
+    {
+        mBreakLength = arg;
+        mDirty = true;
+    }
+
+    public void setHasBreak(boolean arg)
+    {
+        mHasBreak = arg;
+        mDirty = true;
+    }
+
+    public boolean hasBreak()
+    {
+        return mHasBreak;
     }
 
     /** @return the global hotkey combination in packed form */

@@ -166,7 +166,14 @@
                         <Label text="Database Path:" />
                         <Label text="Break Time:" GridPane.rowIndex="2" />
                         <TextField fx:id="cfgDBPath" editable="false" focusTraversable="false" GridPane.columnIndex="1" />
-                        <TextField fx:id="cfgBreaktime" onAction="#handleAction" promptText="in Minutes" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
+                           <children>
+                              <CheckBox fx:id="checkHasBreak" mnemonicParsing="false" onAction="#handleAction" text="insert break of" />
+                              <TextField fx:id="cfgBreakLength" alignment="CENTER" onAction="#handleAction" prefWidth="50.0" promptText="in Minutes" HBox.hgrow="ALWAYS" />
+                              <Label text="minutes after" />
+                              <TextField fx:id="cfgBreakTime" alignment="CENTER" onAction="#handleAction" prefWidth="70.0" promptText="HH:MM" HBox.hgrow="ALWAYS" />
+                           </children>
+                        </HBox>
                         <Label text="Hotkey:" GridPane.rowIndex="1" />
                         <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0" spacing="4.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
                            <children>

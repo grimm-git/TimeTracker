@@ -19,6 +19,7 @@ package TimeTracker.data;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.util.Locale;
@@ -89,6 +90,7 @@ public class Session
     public void setEndToNow()
     {
         SessionEnd = LocalDateTime.now();
+        setProperties();
     }
 
     public String getDayName()
@@ -123,10 +125,12 @@ public class Session
 
         Duration duration = getDuration();
 
-        if (duration.toMinutes() < Defaults.DEFAULT_FIRST_BREAK)
-            return duration;
+        if (Config.hasBreak()) {
+            if (LocalTime.now().isAfter(Config.getBreakTime()))
+                return duration.minusMinutes(Config.getBreakLength());
+        }
 
-        return duration.minusMinutes(Config.getBreakTime());
+        return duration;
     }
 
     /**

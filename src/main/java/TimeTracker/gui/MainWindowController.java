@@ -18,10 +18,14 @@
 package TimeTracker.gui;
 
 import java.io.IOException;
+import java.io.ObjectInputFilter.Config;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.function.UnaryOperator;
 
 import javafx.application.Platform;
 import javafx.beans.property.DoubleProperty;
@@ -38,6 +42,8 @@ import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TextFormatter;
+import javafx.scene.control.TextFormatter.Change;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.KeyCode;
@@ -85,11 +91,13 @@ extends WindowFX
     // Tab View: Config
     @FXML  private TextField cfgDBPath;
     @FXML  private TextField cfgHotkey;
-    @FXML  private TextField cfgBreaktime;
+    @FXML  private TextField cfgBreakTime;
+    @FXML  private TextField cfgBreakLength;
     @FXML  private ToggleButton btnLearnHotkey;
     @FXML  private CheckBox checkHideAtStart;
     @FXML  private CheckBox checkWDSaturday;
     @FXML  private CheckBox checkWDSunday;
+    @FXML  private CheckBox checkHasBreak;
 
     private final MainWindowData dataModel;
     private final DoubleProperty weekTableBarWidthProperty = new SimpleDoubleProperty();
@@ -122,17 +130,32 @@ extends WindowFX
         // Configuration
         Registry Reg = Registry.get();
         Configuration Config = Reg.getConfig();
+        DateTimeFormatter fmtTime = DateTimeFormatter.ofPattern("HH:mm");
 
         cfgDBPath.setText(Config.getDBPath().toString());
         cfgHotkey.setText(GlobalHotkey.format(Config.getHotkey()));
-        cfgBreaktime.setText(String.format("%d",Config.getBreakTime()));
+        cfgBreakTime.setText(Config.getBreakTime().format(fmtTime));
+        cfgBreakLength.setText(String.format("%d",Config.getBreakLength()));
         checkHideAtStart.setSelected(Config.getHideAtStart());
+        checkHasBreak.setSelected(Config.hasBreak());
 
-        // Persist an edited break time as soon as the field loses focus, so the
-        // value is stored just like the hotkey and the "hide at start" flag.
-        cfgBreaktime.focusedProperty().addListener((obs, hadFocus, hasFocus) -> {
-            if (hadFocus && !hasFocus) saveBreakTime();
-        });
+        UnaryOperator<Change> filterTime = change -> {
+                String text = change.getText();
+                return (text.matches("[:0-9]*")) ? change : null;
+            };
+        cfgBreakTime.setTextFormatter(new TextFormatter<String>(filterTime));
+        cfgBreakTime.focusedProperty().addListener((obs, hadFocus, hasFocus) -> {
+                if (hadFocus && !hasFocus) saveBreakTime();
+            });
+
+        UnaryOperator<Change> filterDigits = change -> {
+                String text = change.getText();
+                return (text.matches("[0-9]*")) ? change : null;
+            };
+        cfgBreakLength.setTextFormatter(new TextFormatter<String>(filterDigits));
+        cfgBreakLength.focusedProperty().addListener((obs, hadFocus, hasFocus) -> {
+                if (hadFocus && !hasFocus) saveBreakLength();
+            });
         
         // Current Session
         Session session = Reg.getSession();
@@ -231,10 +254,12 @@ extends WindowFX
 
         if (ev.getSource() == btnHide) hide();
         if (ev.getSource() == btnLearnHotkey) learnHotkey();
-        if (ev.getSource() == cfgBreaktime) saveBreakTime();
+        if (ev.getSource() == cfgBreakTime) saveBreakTime();
+        if (ev.getSource() == cfgBreakLength) saveBreakLength();
         if (ev.getSource() == checkHideAtStart) saveOption(0);
         if (ev.getSource() == checkWDSaturday) saveOption(1);
         if (ev.getSource() == checkWDSunday) saveOption( 2);
+        if (ev.getSource() == checkHasBreak) saveOption( 3);
     }
 
     @FXML
@@ -296,27 +321,41 @@ extends WindowFX
     //                                      Main Window Function
     // ---------------------------------------------------------------------------------------- 
 
-    /**
-     * Validates and persists the current content of the break time field.
-     * Non-numeric or negative input is rejected: the field is restored
-     * to the stored value and the user is informed.
-     */
     private void saveBreakTime()
     {
         Registry Reg = Registry.get();
         Configuration Config = Reg.getConfig();
 
         try {
-            int minutes = Integer.parseInt(cfgBreaktime.getText().trim());
-            if (minutes < 0)
-                throw new NumberFormatException("break time must not be negative");
-
-            Config.setBreakTime(minutes);
+            LocalTime time = LocalTime.parse(cfgBreakTime.getText().trim());
+            Config.setBreakTime(time);
             clearMessage();
 
-        } catch (NumberFormatException e) {
-            cfgBreaktime.setText(String.format("%d", Config.getBreakTime()));
+        } catch (DateTimeParseException e) {
+            showError("Invalid Time Format (HH:MM)");
+
+            DateTimeFormatter fmtTime = DateTimeFormatter.ofPattern("HH:mm");
+            cfgBreakTime.setText(Config.getBreakTime().format(fmtTime));
+        }
+    }
+    
+    /**
+     * Validates and persists the current content of the break time field.
+     * Non-numeric or negative input is rejected: the field is restored
+     * to the stored value and the user is informed.
+     */
+    private void saveBreakLength()
+    {
+        Registry Reg = Registry.get();
+        Configuration Config = Reg.getConfig();
+
+        int minutes = Integer.parseInt(cfgBreakLength.getText().trim());
+        if (minutes > 180) {
+            cfgBreakLength.setText(String.format("%d", Config.getBreakLength()));
             showError("Break time must be a whole number of minutes.");
+        } else {
+            Config.setBreakLength(minutes);
+            clearMessage();
         }
     }
 
@@ -338,6 +377,9 @@ extends WindowFX
                 break;
             case 2:         // WDSunday
                 Config.setWDSunday(checkWDSunday.isSelected());
+                break;
+            case 3:
+                Config.setHasBreak(checkHasBreak.isSelected());
                 break;
             default:
                 break;

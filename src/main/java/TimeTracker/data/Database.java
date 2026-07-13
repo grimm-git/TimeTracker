@@ -29,6 +29,7 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
@@ -259,11 +260,13 @@ public class Database
             stmt.execute(
                 "CREATE TABLE IF NOT EXISTS config ("
               + "    id          INTEGER PRIMARY KEY CHECK (id = 1), "
-              + "    breaktime   INTEGER NOT NULL, "
+              + "    breaklength INTEGER NOT NULL, "
               + "    hotkey      INTEGER NOT NULL, "
               + "    hideatstart INTEGER NOT NULL DEFAULT 0,"
               + "    wdsaturday  INTEGER NOT NULL DEFAULT 0,"
-              + "    wdsunday    INTEGER NOT NULL DEFAULT 0"
+              + "    wdsunday    INTEGER NOT NULL DEFAULT 0,"
+              + "    hasbreak    INTEGER NOT NULL DEFAULT 0,"
+              + "    breaktime   TIME"
               + ")");
 
             // Bring config tables created by earlier versions up to date by
@@ -276,15 +279,27 @@ public class Database
                 stmt.execute("ALTER TABLE config ADD COLUMN wdsaturday INTEGER NOT NULL DEFAULT 0");
             if (!columnExists(CXN, "config", "wdsunday"))
                 stmt.execute("ALTER TABLE config ADD COLUMN wdsunday INTEGER NOT NULL DEFAULT 0");
+            // The former INTEGER breaktime column holds the break length and is
+            // renamed to breaklength; the name breaktime is then reused for a new
+            // TIME column. The rename must run before the breaktime TIME column is
+            // added so the guard below sees breaktime as absent on old databases.
+            if (!columnExists(CXN, "config", "breaklength"))
+                stmt.execute("ALTER TABLE config RENAME COLUMN breaktime TO breaklength");
+            if (!columnExists(CXN, "config", "hasbreak"))
+                stmt.execute("ALTER TABLE config ADD COLUMN hasbreak INTEGER NOT NULL DEFAULT 0");
+            if (!columnExists(CXN, "config", "breaktime"))
+                stmt.execute("ALTER TABLE config ADD COLUMN breaktime TIME");
         }
 
         try (PreparedStatement stmt = CXN.prepareStatement(
-                "INSERT OR IGNORE INTO config (id, breaktime, hotkey, hideatstart, wdsaturday, wdsunday) VALUES (1, ?, ?, ?, ?, ?)")) {
-            stmt.setInt(1, Defaults.DEFAULT_BREAK_TIME);
+                "INSERT OR IGNORE INTO config (id, breaklength, hotkey, hideatstart, wdsaturday, wdsunday, hasbreak, breaktime) VALUES (1, ?, ?, ?, ?, ?, ?, ?)")) {
+            stmt.setInt(1, Defaults.DEFAULT_BREAK_LENGTH);
             stmt.setInt(2, GlobalHotkey.DEFAULT_HOTKEY);
             stmt.setInt(3, Defaults.DEFAULT_HIDE_AT_START ? 1 : 0);
             stmt.setInt(4, 0);
             stmt.setInt(5, 0);
+            stmt.setInt(6, 0);
+            stmt.setString(7, LocalTime.of(Defaults.DEFAULT_BREAK_TIME_H, Defaults.DEFAULT_BREAK_TIME_M).toString());
             stmt.executeUpdate();
         }
     }
@@ -326,17 +341,24 @@ public class Database
         Registry Reg = Registry.get();
         Configuration Config = Reg.getConfig();
 
-        String sql = "SELECT breaktime, hotkey, hideatstart, wdsaturday, wdsunday FROM config WHERE id = 1";
+        String sql = "SELECT hasbreak, breaktime, breaklength, hotkey, hideatstart, wdsaturday, wdsunday FROM config WHERE id = 1";
 
         try (Statement stmt = CXN.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
 
             if (rs.next()) {
-                Config.setBreakTime(rs.getInt("breaktime"));
+                Config.setHasBreak(rs.getInt("hasbreak") == 0 ? false : true);
+                Config.setBreakLength(rs.getInt("breaklength"));
                 Config.setHotkey(rs.getInt("hotkey"));
                 Config.setHideAtStart(rs.getInt("hideatstart") == 0 ? false : true);
                 Config.setWDSaturday(rs.getInt("wdsaturday") == 0 ? false : true);
                 Config.setWDSunday(rs.getInt("wdsunday") == 0 ? false : true);
+
+                // breaktime is a TIME column stored as an ISO string (HH:mm[:ss]);
+                // it is nullable, so keep the in-memory default when it is unset.
+                String breakTime = rs.getString("breaktime");
+                if (breakTime != null && !breakTime.isEmpty())
+                    Config.setBreakTime(LocalTime.parse(breakTime));
             }
         }
     }
@@ -356,17 +378,26 @@ public class Database
         Configuration Config = Reg.getConfig();
         
         if (Config.isDirty()) {
-            String sql = "INSERT INTO config (id, breaktime, hotkey, hideatstart, wdsaturday, wdsunday) VALUES (1, ?, ?, ?, ?, ?) "
-                       + "ON CONFLICT(id) DO UPDATE SET breaktime = excluded.breaktime, "
+            String sql = "INSERT INTO config (id, breaklength, hotkey, hideatstart, wdsaturday, wdsunday, hasbreak, breaktime) VALUES (1, ?, ?, ?, ?, ?, ?, ?) "
+                       + "ON CONFLICT(id) DO UPDATE SET breaklength = excluded.breaklength, "
                        + "hotkey = excluded.hotkey, hideatstart = excluded.hideatstart, "
-                       + "wdsaturday = excluded.wdsaturday, wdsunday = excluded.wdsunday";
+                       + "wdsaturday = excluded.wdsaturday, wdsunday = excluded.wdsunday, "
+                       + "hasbreak = excluded.hasbreak, breaktime = excluded.breaktime";
 
             try (PreparedStatement stmt = CXN.prepareStatement(sql)) {
-                stmt.setInt(1, Config.getBreakTime());
+                stmt.setInt(1, Config.getBreakLength());
                 stmt.setInt(2, Config.getHotkey());
                 stmt.setInt(3, Config.getHideAtStart() ? 1 : 0);
                 stmt.setInt(4, Config.getWDSaturday() ? 1 : 0);
                 stmt.setInt(5, Config.getWDSunday() ? 1 : 0);
+                stmt.setInt(6, Config.hasBreak() ? 1 : 0);
+
+                LocalTime breakTime = Config.getBreakTime();
+                if (breakTime != null)
+                    stmt.setString(7, breakTime.toString());
+                else
+                    stmt.setNull(7, java.sql.Types.VARCHAR);
+
                 stmt.executeUpdate();
             }
         }

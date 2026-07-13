@@ -18,7 +18,6 @@
 package TimeTracker.gui;
 
 import java.io.IOException;
-import java.io.ObjectInputFilter.Config;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.LocalDateTime;

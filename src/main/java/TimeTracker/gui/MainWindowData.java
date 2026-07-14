@@ -72,6 +72,7 @@ public class MainWindowData
                 if (ok == 1) Reg.setSession(new Session());   // start new one
             }
 
+            DBase.updateSession();
             ArrayList<Session> list = DBase.getSessionLog();
             sessionListWeek.setAll(list);
     
@@ -132,5 +133,4 @@ public class MainWindowData
     public StringProperty errorMsgProperty()    { return errorMsg; }
     public StringProperty successMsgProperty()  { return successMsg; }
     public StringProperty elapsedTimeProperty() { return elapsedTime; }
-    
 }

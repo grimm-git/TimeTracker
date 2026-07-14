@@ -97,6 +97,13 @@ public class Database
         CXN.close();
     }
 
+    public void updateSession() throws SQLException
+    {
+        Connection CXN = openDatabase();
+        writeSession(CXN);
+        CXN.close();
+    }
+
     public Connection openDatabase() throws SQLException
     {
         // Opening the connection creates the file if it does not exist yet.

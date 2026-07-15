@@ -18,6 +18,8 @@ package TimeTracker.gui;
 
 import java.util.Optional;
 
+import TimeTracker.Registry;
+import TimeTracker.util.Language;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
@@ -25,6 +27,8 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.layout.Region;
 
 /**
+ * Class provides convinient notification windows for various ocasions
+ * It fully supports I18N via ResourceBundles
  * 
  * @author Matthias Grimm <matthiasgrimm@users.sourceforge.net>
  */
@@ -38,10 +42,10 @@ public class Notification
     public static void showInfo(String msg)
     {
         if (Platform.isFxApplicationThread())
-            _alert(AlertType.INFORMATION, "Information", msg);
+            _alert(AlertType.INFORMATION, i18n("notification.info"), msg);
         else
             Platform.runLater(() -> {
-                _alert(AlertType.INFORMATION, "Information", msg);
+                _alert(AlertType.INFORMATION, i18n("notification.info"), msg);
             });
     }
 
@@ -53,10 +57,10 @@ public class Notification
     public static void showWarning(String msg)
     {
         if (Platform.isFxApplicationThread())
-            _alert(AlertType.WARNING, "Warning", msg);
+            _alert(AlertType.WARNING, i18n("notification.warn"), msg);
         else
             Platform.runLater(() -> {
-                _alert(AlertType.WARNING, "Warning", msg);
+                _alert(AlertType.WARNING, i18n("notification.warn"), msg);
             });
     }
 
@@ -68,10 +72,10 @@ public class Notification
     public static void showError(String msg)
     {
         if (Platform.isFxApplicationThread())
-            _alert(AlertType.ERROR, "Error", msg);
+            _alert(AlertType.ERROR, i18n("notification.error"), msg);
         else
             Platform.runLater(() -> {
-                _alert(AlertType.ERROR, "Error", msg);
+                _alert(AlertType.ERROR, i18n("notification.error"), msg);
             });
     }
     
@@ -85,7 +89,7 @@ public class Notification
     public static boolean getConfirmation(String title, String msg)
     {
         Alert alert = new Alert(AlertType.CONFIRMATION);
-        alert.setTitle("Please confirm");
+        alert.setTitle(i18n("notification.confirm"));
         alert.setHeaderText(title);
         alert.setContentText(msg);
         alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
@@ -107,7 +111,7 @@ public class Notification
     public static int getDecission(String title, String msg, String optionA, String optionB)
     {
         Alert alert = new Alert(AlertType.CONFIRMATION);
-        alert.setTitle("Please confirm");
+        alert.setTitle(i18n("notification.confirm"));
         alert.setHeaderText(title);
         alert.setContentText(msg);
         alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
@@ -128,5 +132,19 @@ public class Notification
         alert.setHeaderText(null);
         alert.setContentText(msg);
         alert.showAndWait();
+    }
+     
+    /**
+     * Convinience wrapper for Language.msg()
+     * 
+     * @param key     translated text to request
+     * @param params  parameter list to be inserted in the translated text into {0} placeholders
+     * @return text for the set LOCALE
+     */
+    private static String i18n(String key, Object ...params)
+    {
+        Registry Reg = Registry.get();
+        Language I18N = Reg.getI18N();
+        return I18N.msg(key, params);
     }
 }

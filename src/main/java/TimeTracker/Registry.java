@@ -26,6 +26,7 @@ import TimeTracker.data.Database;
 import TimeTracker.data.Session;
 import TimeTracker.gui.Notification;
 import TimeTracker.gui.SystemTrayIcon;
+import TimeTracker.util.Language;
 
 /**
  * Master data container class of the application
@@ -41,6 +42,7 @@ public class Registry
     private Configuration Config;
     private BankHolidays Holidays;
     private SystemTrayIcon TrayIcon;
+    private Language I18N;
 
     /**
      * This method is the global access to the Registry object, which is a Singleton
@@ -72,6 +74,7 @@ public class Registry
         Config        = new Configuration();  // create configuration object with default values
         Holidays      = new BankHolidays();
         TrayIcon      = null;
+        I18N          = new Language();       // with Locale.Default();
     }
 
     /**
@@ -108,6 +111,11 @@ public class Registry
         return DBase;
     }
 
+    public Language getI18N()
+    {
+        return I18N;
+    }
+    
     /**
      * Opens the SQLite database at the path stored in the Registry and, on
      * success, stores the database handle in the Registry. If the database can
@@ -123,7 +131,7 @@ public class Registry
             return true;
 
         } catch (SQLException e) {
-            Notification.showError("Database error\n" + e.getLocalizedMessage());
+            Notification.showError(I18N.msg("error.database", e.getLocalizedMessage()));
             return false;
         }
     }

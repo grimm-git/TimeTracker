@@ -19,6 +19,10 @@ package TimeTracker.gui;
 
 import java.io.IOException;
 import java.net.URL;
+import java.util.ResourceBundle;
+
+import TimeTracker.Registry;
+import TimeTracker.util.Language;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Orientation;
 import javafx.scene.Node;
@@ -59,8 +63,13 @@ public abstract class WindowFX
     {
         this.stage = stage;
 
+        Registry Reg = Registry.get();
+        Language I18N = Reg.getI18N();
+
         FXMLLoader fxmlLoader = new FXMLLoader();
         fxmlLoader.setLocation(getFXMLResource(fxmlFile));
+        fxmlLoader.setResources(I18N.bundle());
+
         fxmlLoader.setController(this);
         Parent root = fxmlLoader.load();
       
@@ -80,6 +89,20 @@ public abstract class WindowFX
         ev.consume();
         storePosition();
         close();
+    }
+ 
+    /**
+     * Convinience wrapper for Language.msg()
+     * 
+     * @param key     translated text to request
+     * @param params  parameter list to be inserted in the translated text into {0} placeholders
+     * @return text for the set LOCALE
+     */
+    protected String i18n(String key, Object ...params)
+    {
+        Registry Reg = Registry.get();
+        Language I18N = Reg.getI18N();
+        return I18N.msg(key, params);
     }
 
     /**

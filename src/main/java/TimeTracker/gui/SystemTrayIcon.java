@@ -17,6 +17,9 @@
  */package TimeTracker.gui;
 
 import com.dustinredmond.fxtrayicon.FXTrayIcon;
+
+import TimeTracker.Registry;
+import TimeTracker.util.Language;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 import javafx.stage.Stage;
@@ -27,9 +30,12 @@ public class SystemTrayIcon
 
     public SystemTrayIcon(Stage stage, String icon)
     {
-		trayIcon = new FXTrayIcon(stage, getClass().getResource("/images/"+icon));
-		trayIcon.show();
-		trayIcon.setTrayIconTooltip("TimeTracker - track your working time");
+      Registry Reg = Registry.get();
+      Language i18n = Reg.getI18N();
+      
+		  trayIcon = new FXTrayIcon(stage, getClass().getResource("/images/"+icon));
+		  trayIcon.show();
+		  trayIcon.setTrayIconTooltip(i18n.msg("trayicon.tooltip"));
     }
 
     public void addMenuItem(Menu item)

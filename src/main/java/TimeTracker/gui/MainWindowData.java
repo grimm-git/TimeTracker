@@ -28,6 +28,8 @@ import TimeTracker.Defaults;
 import TimeTracker.Registry;
 import TimeTracker.data.Database;
 import TimeTracker.data.Session;
+import TimeTracker.util.Language;
+
 import static TimeTracker.gui.Notification.getDecission;
 import static TimeTracker.gui.Notification.showError;
 
@@ -41,6 +43,8 @@ import javafx.collections.ObservableList;
 
 /**
  *
+ * Full I18N support
+ * 
  * @author Matthias Grimm
  */
 public class MainWindowData
@@ -68,7 +72,10 @@ public class MainWindowData
                 Reg.setSession(new Session());   // new day, new session
 
             } else {    // still the same day, so...
-                ok = getDecission("Open Session", "What shall we do with the session?", "Continue", "Start new one");
+                ok = getDecission(i18n("dlg.open.title"),
+                                  i18n("dlg.open.msg"),
+                                  i18n("dlg.open.opta"),
+                                  i18n("dlg.open.optb"));
                 if (ok == 1) Reg.setSession(new Session());   // start new one
             }
 
@@ -77,7 +84,7 @@ public class MainWindowData
             sessionListWeek.setAll(list);
     
         } catch (SQLException e) {
-            showError("Can't find Session.\n" + e.getLocalizedMessage());
+            showError(i18n("error.opensession", e.getLocalizedMessage()));
         }        
 
         elapsedTime.set("00:00");
@@ -114,7 +121,7 @@ public class MainWindowData
             Reg.getDBase().updateDatabase();
 
         } catch (SQLException e) {
-            showError("Data could not be saved!");
+            showError(i18n("error.save"));
         }
     }
 
@@ -127,6 +134,19 @@ public class MainWindowData
         DBase.dumpAllSessions(exportPath);
     }
 
+    /**
+     * Convinience wrapper for Language.msg()
+     * 
+     * @param key     translated text to request
+     * @param params  parameter list to be inserted in the translated text into {0} placeholders
+     * @return text for the set LOCALE
+     */
+    private String i18n(String key, Object ...params)
+    {
+        Registry Reg = Registry.get();
+        Language I18N = Reg.getI18N();
+        return I18N.msg(key, params);
+    }
     // -------------------------------------------------------------------------------- 
     //                                   Property Objects
     // -------------------------------------------------------------------------------- 

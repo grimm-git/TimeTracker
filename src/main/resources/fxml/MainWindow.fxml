@@ -125,7 +125,7 @@
       </HBox>
       <TabPane tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
         <tabs>
-          <Tab text="Week">
+          <Tab text="%tabheader.sessions">
                <content>
                   <VBox>
                      <children>
@@ -145,7 +145,7 @@
                   </VBox>
                </content>
           </Tab>
-          <Tab text="Config">
+          <Tab text="%tabheader.config">
                <content>
                   <GridPane>
                     <columnConstraints>

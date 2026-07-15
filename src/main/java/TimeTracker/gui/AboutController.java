@@ -20,6 +20,8 @@ package TimeTracker.gui;
 import java.io.IOException;
 
 import TimeTracker.Defaults;
+import TimeTracker.Registry;
+import TimeTracker.util.Language;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -28,6 +30,7 @@ import javafx.scene.text.TextFlow;
 
 /**
  * FXML Controller class
+ * Full support of I18N
  *
  * @author Matthias Grimm
  */
@@ -46,7 +49,7 @@ extends WindowFX
     public AboutController() throws IOException
     {
         super("About.fxml", "timetracker.css");
-        stage.setTitle("About");
+        stage.setTitle(i18n("about.title"));
         stage.setResizable(false);
 
         Text text;
@@ -54,32 +57,28 @@ extends WindowFX
         text.setStyle("-fx-font-weight: bold; -fx-font-size:1.2em");
         textArea.getChildren().add(text);
         
-        text = new Text("Author: Matthias Grimm, \u00A92026\n");
+        text = new Text(i18n("about.author","Matthias Grimm, \u00A92026\n"));
         textArea.getChildren().add(text);
 
         text = new Text("\n");
         text.setStyle("-fx-font-size: 0.4em");
         textArea.getChildren().add(text);
 
-        text = new Text("Time Tracker for daily work hours\n");
+        text = new Text(i18n("about.brief") + "\n");
         textArea.getChildren().add(text);
         
         text = new Text("\n");
         text.setStyle("-fx-font-size: 0.4em");
         textArea.getChildren().add(text);
 
-        text = new Text("Keep track of your working hours"
-                      + "\n");
+        text = new Text(i18n("about.detailed") + "\n");
         textArea.getChildren().add(text);
 
         text = new Text("\n");
         text.setStyle("-fx-font-size: 0.4em");
         textArea.getChildren().add(text);
 
-        text = new Text("This program is free software; you can redistribute " 
-                      + "it and/or modify it under the terms of the GNU General Public License " 
-                      + "as published by the Free Software Foundation; either version 3 of the " 
-                      + "License, or (at your option) any later version.");
+        text = new Text(i18n("about.license")); 
         textArea.getChildren().add(text);
     }
 

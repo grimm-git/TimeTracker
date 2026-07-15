@@ -76,7 +76,7 @@ public class Database
                     Files.createDirectories(parent);
 
             } catch (java.io.IOException e) {
-                throw new SQLException("Could not create directory for database: " + dbPath, e);
+                throw new SQLException(e.getLocalizedMessage(), e);
             }
         }
             

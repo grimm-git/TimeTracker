@@ -24,8 +24,17 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.ResourceBundle;
 import java.util.function.UnaryOperator;
 
+import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
+
+import TimeTracker.Defaults;
+import TimeTracker.Registry;
+import TimeTracker.data.Configuration;
+import TimeTracker.data.Session;
+import TimeTracker.util.GlobalHotkey;
+import TimeTracker.util.Language;
 import javafx.application.Platform;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
@@ -49,14 +58,6 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.stage.Stage;
 import javafx.util.Callback;
-
-import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
-
-import TimeTracker.Defaults;
-import TimeTracker.Registry;
-import TimeTracker.data.Configuration;
-import TimeTracker.data.Session;
-import TimeTracker.util.GlobalHotkey;
 
 /**
  * FXML Controller class.<p>
@@ -165,7 +166,6 @@ extends WindowFX
         textSessionEnd.textProperty().bind(session.EndProperty());
         textSessionDur.textProperty().bind(dataModel.elapsedTimeProperty());
 
-
         // Table Week
         colDay.setCellValueFactory(new PropertyValueFactory<>("DayName"));
         colDay.setCellFactory(formatWeekDay);
@@ -202,7 +202,7 @@ extends WindowFX
         });
 
         if (Reg.getSystemTray() != null) {
-            MenuItem miTrayExit = new MenuItem("Exit TimeTracker");
+            MenuItem miTrayExit = new MenuItem(i18n("trayicon.exit"));
 		    miTrayExit.setOnAction(e -> close());
             Reg.getSystemTray().addMenuItem(miTrayExit);
         }
@@ -225,7 +225,10 @@ extends WindowFX
     @Override
     protected void close()
     {
-        int rc = Notification.getDecission("Exit TimeTracker", "Should the time tracking been stopped?", "yes", "No");
+        int rc = Notification.getDecission(i18n("dlg.exit.header"),
+                                           i18n("dlg.exit.message"),
+                                           i18n("dlg.exit.opta"),
+                                           i18n("dlg.exit.optb"));
         if (rc == 0) {
             storePosition();
             Platform.exit();
@@ -292,10 +295,10 @@ extends WindowFX
         } else if (event.getSource() == miExport) {
             try {
                 dataModel.exportSessions();
-                showSuccess("Sessions exported.");
+                showSuccess(i18n("success.export"));
 
             } catch (SQLException | IOException e) {
-                showError("Export failed:" + e.getLocalizedMessage());
+                showError(i18n("error.export", e.getLocalizedMessage()));
             }
 
         // Help Menu
@@ -331,7 +334,7 @@ extends WindowFX
             clearMessage();
 
         } catch (DateTimeParseException e) {
-            showError("Invalid Time Format (HH:MM)");
+            showError(i18n("error.breaktime"));
 
             DateTimeFormatter fmtTime = DateTimeFormatter.ofPattern("HH:mm");
             cfgBreakTime.setText(Config.getBreakTime().format(fmtTime));
@@ -351,7 +354,7 @@ extends WindowFX
         int minutes = Integer.parseInt(cfgBreakLength.getText().trim());
         if (minutes > 180) {
             cfgBreakLength.setText(String.format("%d", Config.getBreakLength()));
-            showError("Break time must be a whole number of minutes.");
+            showError(i18n("error.breaklength"));
         } else {
             Config.setBreakLength(minutes);
             clearMessage();
@@ -396,8 +399,8 @@ extends WindowFX
     {
         if (btnLearnHotkey.isSelected()) {
             learningHotkey = true;
-            cfgHotkey.setText("Recording new hotkey…");
-            showMessage("Press a modifier plus a key (ESC to cancel).");
+            cfgHotkey.setText(i18n("hotkey.recording"));
+            showMessage(i18n("hotkey.howto"));
             learner = new GlobalHotkey.Learner(this::onLearnKey);
             learner.start();
         } else {
@@ -456,7 +459,7 @@ extends WindowFX
         }
 
         if (modifiers == 0 && !GlobalHotkey.isFunctionKey(keyCode)) {
-            showError("A hotkey needs at least one modifier");
+            showError(i18n("error.hotkey"));
             return;   // keep listening
         }
 
@@ -471,7 +474,7 @@ extends WindowFX
         Configuration Config = Reg.getConfig();
         Config.setHotkey(packedCombo);
         cfgHotkey.setText(GlobalHotkey.format(packedCombo));
-        showSuccess("New hotkey: " + GlobalHotkey.format(packedCombo));
+        showSuccess(i18n("success.hotkey", GlobalHotkey.format(packedCombo)));
     }
 
     // ---------------------------------------------------------------------------------------- 

@@ -14,6 +14,7 @@
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.ColumnConstraints?>
@@ -28,9 +29,9 @@
    <children>
       <MenuBar>
         <menus>
-          <Menu mnemonicParsing="false" text="File">
+          <Menu mnemonicParsing="false" text="%menu.file">
             <items>
-                  <MenuItem fx:id="miExport" mnemonicParsing="false" onAction="#handleMenus" text="Export">
+                  <MenuItem fx:id="miExport" mnemonicParsing="false" onAction="#handleMenus" text="%menu.export">
                      <graphic>
                         <ImageView pickOnBounds="true" preserveRatio="true">
                            <image>
@@ -39,7 +40,7 @@
                         </ImageView>
                      </graphic>
                   </MenuItem>
-              <MenuItem fx:id="miExit" mnemonicParsing="false" onAction="#handleMenus" text="Terminate">
+              <MenuItem fx:id="miExit" mnemonicParsing="false" onAction="#handleMenus" text="%menu.exit">
                      <graphic>
                         <ImageView pickOnBounds="true" preserveRatio="true">
                            <image>
@@ -50,9 +51,9 @@
                   </MenuItem>
             </items>
           </Menu>
-          <Menu mnemonicParsing="false" text="Help">
+          <Menu mnemonicParsing="false" text="%menu.help">
             <items>
-              <MenuItem fx:id="miAbout" mnemonicParsing="false" onAction="#handleMenus" text="About">
+              <MenuItem fx:id="miAbout" mnemonicParsing="false" onAction="#handleMenus" text="%menu.about">
                      <graphic>
                         <ImageView pickOnBounds="true" preserveRatio="true">
                            <image>
@@ -82,7 +83,12 @@
                         <Font name="System Bold" size="18.0" />
                      </font>
                   </Label>
-                  <Label text="by Matthias Grimm" />
+                  <HBox spacing="4.0">
+                     <children>
+                        <Label text="%main.author" />
+                        <Label text="Matthias Grimm, ©2026" />
+                     </children>
+                  </HBox>
                </children>
             </VBox>
          </children>
@@ -97,7 +103,7 @@
       </Separator>
       <HBox alignment="CENTER" spacing="4.0">
          <children>
-            <Label text="Session:" />
+            <Label text="%main.session" />
             <TextField fx:id="textSessionDay" alignment="CENTER" editable="false" focusTraversable="false" prefWidth="90.0" promptText="Montag" />
             <TextField fx:id="textSessionDate" alignment="CENTER" editable="false" focusTraversable="false" prefWidth="100.0" promptText="01.01.2000" />
             <TextField fx:id="textSessionStart" alignment="CENTER" editable="false" focusTraversable="false" prefWidth="70.0" promptText="HH:MM" />
@@ -131,11 +137,11 @@
                      <children>
                         <TableView fx:id="tableWeek" prefHeight="250.0" prefWidth="500.0" VBox.vgrow="ALWAYS">
                           <columns>
-                            <TableColumn fx:id="colDay" editable="false" minWidth="50.0" prefWidth="90.0" text="Day" />
-                            <TableColumn fx:id="colStart" editable="false" minWidth="50.0" prefWidth="120.0" text="Start" />
-                              <TableColumn fx:id="colEnd" editable="false" minWidth="50.0" prefWidth="120.0" text="End" />
-                              <TableColumn fx:id="colDuration" editable="false" minWidth="50.0" prefWidth="75.0" text="Duration" />
-                              <TableColumn fx:id="colWorkTime" editable="false" minWidth="50.0" prefWidth="75.0" text="Work Time" />
+                            <TableColumn fx:id="colDay" editable="false" minWidth="50.0" prefWidth="90.0" text="%table.day" />
+                            <TableColumn fx:id="colStart" editable="false" minWidth="50.0" prefWidth="120.0" text="%table.start" />
+                              <TableColumn fx:id="colEnd" editable="false" minWidth="50.0" prefWidth="120.0" text="%table.end" />
+                              <TableColumn fx:id="colDuration" editable="false" minWidth="50.0" prefWidth="75.0" text="%table.duration" />
+                              <TableColumn fx:id="colWorkTime" editable="false" minWidth="50.0" prefWidth="75.0" text="%table.worktime" />
                           </columns>
                         </TableView>
                      </children>
@@ -147,10 +153,10 @@
           </Tab>
           <Tab text="%tabheader.config">
                <content>
-                  <GridPane>
+                  <GridPane hgap="4.0">
                     <columnConstraints>
-                      <ColumnConstraints fillWidth="false" hgrow="NEVER" minWidth="10.0" prefWidth="100.0" />
-                      <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+                      <ColumnConstraints fillWidth="false" hgrow="SOMETIMES" minWidth="10.0" />
+                      <ColumnConstraints hgrow="ALWAYS" minWidth="10.0" prefWidth="100.0" />
                     </columnConstraints>
                     <rowConstraints>
                       <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="NEVER" />
@@ -163,18 +169,18 @@
                         <Insets bottom="4.0" left="4.0" right="4.0" top="4.0" />
                      </padding>
                      <children>
-                        <Label text="Database Path:" />
-                        <Label text="Break Time:" GridPane.rowIndex="2" />
+                        <Label text="%config.dbpath" />
+                        <Label text="%config.breaktime" GridPane.rowIndex="2" />
                         <TextField fx:id="cfgDBPath" editable="false" focusTraversable="false" GridPane.columnIndex="1" />
                         <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
                            <children>
-                              <CheckBox fx:id="checkHasBreak" mnemonicParsing="false" onAction="#handleAction" text="insert break of" />
-                              <TextField fx:id="cfgBreakLength" alignment="CENTER" onAction="#handleAction" prefWidth="50.0" promptText="in Minutes" HBox.hgrow="ALWAYS" />
-                              <Label text="minutes after" />
+                              <CheckBox fx:id="checkHasBreak" mnemonicParsing="false" onAction="#handleAction" text="%config.insertbreak1" />
+                              <TextField fx:id="cfgBreakLength" alignment="CENTER" onAction="#handleAction" prefWidth="50.0" promptText="%config.inminutes" HBox.hgrow="ALWAYS" />
+                              <Label text="%config.insertbreak2" />
                               <TextField fx:id="cfgBreakTime" alignment="CENTER" onAction="#handleAction" prefWidth="70.0" promptText="HH:MM" HBox.hgrow="ALWAYS" />
                            </children>
                         </HBox>
-                        <Label text="Hotkey:" GridPane.rowIndex="1" />
+                        <Label text="%config.hotkey" GridPane.rowIndex="1" />
                         <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0" spacing="4.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
                            <children>
                               <TextField fx:id="cfgHotkey" editable="false" HBox.hgrow="ALWAYS" />
@@ -186,18 +192,21 @@
                                        </image>
                                     </ImageView>
                                  </graphic>
+                                 <tooltip>
+                                    <Tooltip text="%hotkey.tooltip" />
+                                 </tooltip>
                               </ToggleButton>
                            </children>
                         </HBox>
-                        <Label text="Options:" GridPane.rowIndex="3">
+                        <Label text="%config.options" GridPane.rowIndex="3">
                            <padding>
                               <Insets top="5.0" />
                            </padding></Label>
                         <VBox spacing="4.0" GridPane.columnIndex="1" GridPane.rowIndex="3" GridPane.vgrow="ALWAYS">
                            <children>
-                              <CheckBox fx:id="checkHideAtStart" mnemonicParsing="false" onAction="#handleAction" text="Hide at start" />
-                              <CheckBox fx:id="checkWDSaturday" mnemonicParsing="false" onAction="#handleAction" text="Saturday is working day" />
-                              <CheckBox fx:id="checkWDSunday" mnemonicParsing="false" onAction="#handleAction" text="Sunday is working day" />
+                              <CheckBox fx:id="checkHideAtStart" mnemonicParsing="false" onAction="#handleAction" text="%config.starthide" />
+                              <CheckBox fx:id="checkWDSaturday" mnemonicParsing="false" onAction="#handleAction" text="%config.wdsaturday" />
+                              <CheckBox fx:id="checkWDSunday" mnemonicParsing="false" onAction="#handleAction" text="%config.wdsunday" />
                            </children>
                            <padding>
                               <Insets bottom="4.0" top="4.0" />

@@ -24,7 +24,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.ResourceBundle;
 import java.util.function.UnaryOperator;
 
 import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
@@ -34,7 +33,6 @@ import TimeTracker.Registry;
 import TimeTracker.data.Configuration;
 import TimeTracker.data.Session;
 import TimeTracker.util.GlobalHotkey;
-import TimeTracker.util.Language;
 import javafx.application.Platform;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;

@@ -18,7 +18,6 @@ package TimeTracker.data;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.LocalTime;
 
 import com.github.kwhat.jnativehook.NativeHookException;
 
@@ -29,7 +28,7 @@ public class Configuration
 {   
     private boolean mDirty;
     private Path mDBPath;
-    private LocalTime mBreakTime;
+    private float mBreakTime;
     private int mBreakLength;
     private int mHotkey;
     private boolean mHideAtStart;
@@ -43,7 +42,7 @@ public class Configuration
     {
         mDirty       = false;
         mDBPath      = Paths.get(System.getProperty("user.dir"), Defaults.DB_FILE_NAME);
-        mBreakTime   = LocalTime.of(Defaults.DEFAULT_BREAK_TIME_H, Defaults.DEFAULT_BREAK_TIME_M);
+        mBreakTime   = Defaults.DEFAULT_BREAK_TIME;
         mBreakLength = Defaults.DEFAULT_BREAK_LENGTH;
         mHotkey      = GlobalHotkey.DEFAULT_HOTKEY;
         mHideAtStart = Defaults.DEFAULT_HIDE_AT_START;
@@ -69,15 +68,15 @@ public class Configuration
     }
 
 
-    /** @return the time where after the break should be inserted */
-    public LocalTime getBreakTime()
+    /** @return hours after the break should be inserted */
+    public float getBreakTime()
     {
         return mBreakTime;
     }
 
-    public void setBreakTime(LocalTime time)
+    public void setBreakTime(float hours)
     {
-        mBreakTime = time;
+        mBreakTime = hours;
         mDirty = true;
     }
 

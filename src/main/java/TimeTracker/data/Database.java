@@ -29,7 +29,6 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
@@ -282,7 +281,7 @@ public class Database
               + "    wdsaturday  INTEGER NOT NULL DEFAULT 0,"
               + "    wdsunday    INTEGER NOT NULL DEFAULT 0,"
               + "    insertbreak INTEGER NOT NULL DEFAULT 0,"
-              + "    breaktime   TIME"
+              + "    breaktime   REAL"
               + ")");
 
             // Bring config tables created by earlier versions up to date by
@@ -302,7 +301,17 @@ public class Database
             else if (!columnExists(CXN, "config", "insertbreak"))
                 stmt.execute("ALTER TABLE config ADD COLUMN insertbreak INTEGER NOT NULL DEFAULT 0");
             if (!columnExists(CXN, "config", "breaktime"))
-                stmt.execute("ALTER TABLE config ADD COLUMN breaktime TIME");
+                stmt.execute("ALTER TABLE config ADD COLUMN breaktime REAL");
+
+            // breaktime changed meaning: it used to hold a wall-clock time (an ISO
+            // string, later the seconds of day) and now holds the hours since the
+            // session start as a REAL. Old values can not be converted, so reset
+            // any left behind in a previous format to the default.
+            try (PreparedStatement upd = CXN.prepareStatement(
+                    "UPDATE config SET breaktime = ? WHERE id = 1 AND typeof(breaktime) IN ('text', 'integer')")) {
+                upd.setFloat(1, Defaults.DEFAULT_BREAK_TIME);
+                upd.executeUpdate();
+            }
         }
 
         try (PreparedStatement stmt = CXN.prepareStatement(
@@ -313,7 +322,7 @@ public class Database
             stmt.setInt(4, 0);
             stmt.setInt(5, 0);
             stmt.setInt(6, 0);
-            stmt.setString(7, LocalTime.of(Defaults.DEFAULT_BREAK_TIME_H, Defaults.DEFAULT_BREAK_TIME_M).toString());
+            stmt.setFloat(7, Defaults.DEFAULT_BREAK_TIME);
             stmt.executeUpdate();
         }
     }
@@ -368,11 +377,11 @@ public class Database
                 Config.setWDSaturday(rs.getInt("wdsaturday") == 0 ? false : true);
                 Config.setWDSunday(rs.getInt("wdsunday") == 0 ? false : true);
 
-                // breaktime is a TIME column stored as an ISO string (HH:mm[:ss]);
-                // it is nullable, so keep the in-memory default when it is unset.
-                String breakTime = rs.getString("breaktime");
-                if (breakTime != null && !breakTime.isEmpty())
-                    Config.setBreakTime(LocalTime.parse(breakTime));
+                // breaktime is stored as the hours since the session start; it is
+                // nullable, so keep the in-memory default when it is unset.
+                float breakTime = rs.getFloat("breaktime");
+                if (!rs.wasNull())
+                    Config.setBreakTime(breakTime);
             }
         }
     }
@@ -406,11 +415,7 @@ public class Database
                 stmt.setInt(5, Config.getWDSunday() ? 1 : 0);
                 stmt.setInt(6, Config.hasBreak() ? 1 : 0);
 
-                LocalTime breakTime = Config.getBreakTime();
-                if (breakTime != null)
-                    stmt.setString(7, breakTime.toString());
-                else
-                    stmt.setNull(7, java.sql.Types.VARCHAR);
+                stmt.setFloat(7, Config.getBreakTime());
 
                 stmt.executeUpdate();
             }

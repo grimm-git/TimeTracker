@@ -84,11 +84,10 @@ public final class Defaults
     public static final int DEFAULT_FIRST_BREAK = 4*60;
      
     /**
-     * DEFAULT_BREAK_TIME is the time after that a break in sinserted in the day
+     * DEFAULT_BREAK_TIME is the time in hours after that a break in inserted in the day
      */
-    public static final int DEFAULT_BREAK_TIME_H = 12;
-    public static final int DEFAULT_BREAK_TIME_M = 0;
-
+    public static final float DEFAULT_BREAK_TIME = 4;
+    
     /**
      * DEFAULT_BREAK_LENGTH is the break duration in minutes used to seed the
      * configuration table when a database is created for the first time.

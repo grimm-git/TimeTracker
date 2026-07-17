@@ -176,9 +176,10 @@
                         <HBox alignment="CENTER_LEFT" spacing="5.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
                            <children>
                               <CheckBox fx:id="checkHasBreak" mnemonicParsing="false" onAction="#handleAction" text="%config.insertbreak1" />
-                              <TextField fx:id="cfgBreakLength" alignment="CENTER" onAction="#handleAction" prefWidth="50.0" promptText="%config.inminutes" HBox.hgrow="ALWAYS" />
+                              <TextField fx:id="cfgBreakLength" alignment="CENTER" onAction="#handleAction" prefWidth="50.0" HBox.hgrow="ALWAYS" />
                               <Label text="%config.insertbreak2" />
-                              <TextField fx:id="cfgBreakTime" alignment="CENTER" onAction="#handleAction" prefWidth="70.0" promptText="HH:MM" HBox.hgrow="ALWAYS" />
+                              <TextField fx:id="cfgBreakTime" alignment="CENTER" onAction="#handleAction" prefWidth="50.0" HBox.hgrow="ALWAYS" />
+                              <Label text="%config.insertbreak3" />
                            </children>
                         </HBox>
                         <Label text="%config.hotkey" GridPane.rowIndex="1" />

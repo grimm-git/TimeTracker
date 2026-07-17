@@ -121,7 +121,7 @@ public class MainWindowData
         elapsedTime.set(String.format("%02d:%02d",
                     elapsed.toHours(), elapsed.toMinutesPart()));
 
-        if (Config.hasBreak() && LocalTime.now().isAfter(Config.getBreakTime()))
+        if (Config.hasBreak() && (elapsed.toSeconds()/3600) > Config.getBreakTime())
             session.setBreak(true);   // a break has been inserted into the session
 
         try {

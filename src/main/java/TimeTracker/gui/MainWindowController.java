@@ -19,11 +19,13 @@ package TimeTracker.gui;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.text.DecimalFormatSymbols;
+import java.text.NumberFormat;
+import java.text.ParseException;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.function.UnaryOperator;
 
 import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
@@ -33,6 +35,7 @@ import TimeTracker.Registry;
 import TimeTracker.data.Configuration;
 import TimeTracker.data.Session;
 import TimeTracker.util.GlobalHotkey;
+import TimeTracker.util.Language;
 import javafx.application.Platform;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
@@ -129,20 +132,21 @@ extends WindowFX
         // Configuration
         Registry Reg = Registry.get();
         Configuration Config = Reg.getConfig();
-        DateTimeFormatter fmtTime = DateTimeFormatter.ofPattern("HH:mm");
+        Language i18n = Reg.getI18N();
 
         cfgDBPath.setText(Config.getDBPath().toString());
         cfgHotkey.setText(GlobalHotkey.format(Config.getHotkey()));
-        cfgBreakTime.setText(Config.getBreakTime().format(fmtTime));
+        cfgBreakTime.setText(String.format("%.1f", Config.getBreakTime()));
         cfgBreakLength.setText(String.format("%d",Config.getBreakLength()));
         checkHideAtStart.setSelected(Config.getHideAtStart());
         checkHasBreak.setSelected(Config.hasBreak());
 
-        UnaryOperator<Change> filterTime = change -> {
+        UnaryOperator<Change> filterFloat = change -> {
                 String text = change.getText();
-                return (text.matches("[:0-9]*")) ? change : null;
+                char sep = DecimalFormatSymbols.getInstance(i18n.locale()).getDecimalSeparator();
+                return (text.matches("[0-9\\" + String.valueOf(sep) + "]*")) ? change : null;
             };
-        cfgBreakTime.setTextFormatter(new TextFormatter<String>(filterTime));
+        cfgBreakTime.setTextFormatter(new TextFormatter<String>(filterFloat));
         cfgBreakTime.focusedProperty().addListener((obs, hadFocus, hasFocus) -> {
                 if (hadFocus && !hasFocus) saveBreakTime();
             });
@@ -155,6 +159,7 @@ extends WindowFX
         cfgBreakLength.focusedProperty().addListener((obs, hadFocus, hasFocus) -> {
                 if (hadFocus && !hasFocus) saveBreakLength();
             });
+
         
         // Current Session
         Session session = Reg.getSession();
@@ -260,8 +265,8 @@ extends WindowFX
 
         if (ev.getSource() == btnHide) hide();
         if (ev.getSource() == btnLearnHotkey) learnHotkey();
-        if (ev.getSource() == cfgBreakTime) saveBreakTime();
-        if (ev.getSource() == cfgBreakLength) saveBreakLength();
+        if (ev.getSource() == cfgBreakTime) cfgBreakLength.requestFocus();  //saveBreakTime();
+        if (ev.getSource() == cfgBreakLength) cfgBreakTime.requestFocus();  //saveBreakLength();
         if (ev.getSource() == checkHideAtStart) saveOption(0);
         if (ev.getSource() == checkWDSaturday) saveOption(1);
         if (ev.getSource() == checkWDSunday) saveOption( 2);
@@ -331,17 +336,20 @@ extends WindowFX
     {
         Registry Reg = Registry.get();
         Configuration Config = Reg.getConfig();
+        Language i18n = Reg.getI18N();
 
+        NumberFormat nf = NumberFormat.getInstance(i18n.locale());
         try {
-            LocalTime time = LocalTime.parse(cfgBreakTime.getText().trim());
-            Config.setBreakTime(time);
+            float hours = nf.parse(cfgBreakTime.getText().trim()).floatValue();
+            if (hours <= 1 || hours >= 24)
+                 throw(new ParseException(i18n("error.breaktime", String.format("%.1f",hours)),0));
+
+            Config.setBreakTime(hours);
             clearMessage();
 
-        } catch (DateTimeParseException e) {
-            showError(i18n("error.breaktime"));
-
-            DateTimeFormatter fmtTime = DateTimeFormatter.ofPattern("HH:mm");
-            cfgBreakTime.setText(Config.getBreakTime().format(fmtTime));
+        } catch (ParseException e) {
+            showError(e.getLocalizedMessage());
+            cfgBreakTime.setText(String.format("%.1f",Config.getBreakTime()));
         }
     }
     

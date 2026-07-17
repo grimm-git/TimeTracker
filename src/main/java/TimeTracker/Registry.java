@@ -19,7 +19,6 @@ package TimeTracker;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
-import java.util.Locale;
 
 import TimeTracker.data.BankHolidays;
 import TimeTracker.data.Configuration;

@@ -17,13 +17,11 @@
 package TimeTracker.gui;
 
 import java.io.IOException;
-import java.io.ObjectInputFilter.Config;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.ArrayList;
 
 import TimeTracker.Defaults;

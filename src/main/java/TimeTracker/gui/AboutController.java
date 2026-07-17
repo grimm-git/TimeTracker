@@ -20,8 +20,6 @@ package TimeTracker.gui;
 import java.io.IOException;
 
 import TimeTracker.Defaults;
-import TimeTracker.Registry;
-import TimeTracker.util.Language;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;

@@ -131,7 +131,7 @@ public class Database
     {
         ArrayList<Session> sessions = new ArrayList<>();
 
-        String sql = "SELECT id, start, end FROM sessions "
+        String sql = "SELECT id, start, end, hadbreak FROM sessions "
                    + "ORDER BY id DESC LIMIT 10 OFFSET 1";
 
         Connection CXN = openDatabase();
@@ -142,7 +142,10 @@ public class Database
                 int id = rs.getInt("id");
                 LocalDateTime start = toLocalDateTime(rs.getLong("start"));
                 LocalDateTime end   = toLocalDateTime(rs.getLong("end"));
-                sessions.add(new Session(id, start, end));
+
+                Session session = new Session(id, start, end);
+                session.setBreak(rs.getInt("hadbreak") != 0);
+                sessions.add(session);
             }
         }
         CXN.close();
@@ -255,14 +258,20 @@ public class Database
         try (Statement stmt = CXN.createStatement()) {
             stmt.execute(
                 "CREATE TABLE IF NOT EXISTS sessions ("
-              + "    id    INTEGER PRIMARY KEY AUTOINCREMENT, "
-              + "    start INTEGER NOT NULL, "
-              + "    end   INTEGER"
+              + "    id       INTEGER PRIMARY KEY AUTOINCREMENT, "
+              + "    start    INTEGER NOT NULL, "
+              + "    end      INTEGER, "
+              + "    hadbreak INTEGER NOT NULL DEFAULT 0"
               + ")");
 
             stmt.execute(
                 "CREATE INDEX IF NOT EXISTS idx_sessions_start "
               + "ON sessions(start)");
+
+            // hadbreak records whether the configured break was inserted into a
+            // session; add it to sessions tables created by earlier versions.
+            if (!columnExists(CXN, "sessions", "hadbreak"))
+                stmt.execute("ALTER TABLE sessions ADD COLUMN hadbreak INTEGER NOT NULL DEFAULT 0");
 
             stmt.execute(
                 "CREATE TABLE IF NOT EXISTS config ("
@@ -272,7 +281,7 @@ public class Database
               + "    hideatstart INTEGER NOT NULL DEFAULT 0,"
               + "    wdsaturday  INTEGER NOT NULL DEFAULT 0,"
               + "    wdsunday    INTEGER NOT NULL DEFAULT 0,"
-              + "    hasbreak    INTEGER NOT NULL DEFAULT 0,"
+              + "    insertbreak INTEGER NOT NULL DEFAULT 0,"
               + "    breaktime   TIME"
               + ")");
 
@@ -286,20 +295,18 @@ public class Database
                 stmt.execute("ALTER TABLE config ADD COLUMN wdsaturday INTEGER NOT NULL DEFAULT 0");
             if (!columnExists(CXN, "config", "wdsunday"))
                 stmt.execute("ALTER TABLE config ADD COLUMN wdsunday INTEGER NOT NULL DEFAULT 0");
-            // The former INTEGER breaktime column holds the break length and is
-            // renamed to breaklength; the name breaktime is then reused for a new
-            // TIME column. The rename must run before the breaktime TIME column is
-            // added so the guard below sees breaktime as absent on old databases.
             if (!columnExists(CXN, "config", "breaklength"))
                 stmt.execute("ALTER TABLE config RENAME COLUMN breaktime TO breaklength");
-            if (!columnExists(CXN, "config", "hasbreak"))
-                stmt.execute("ALTER TABLE config ADD COLUMN hasbreak INTEGER NOT NULL DEFAULT 0");
+            if (columnExists(CXN, "config", "hasbreak"))
+                stmt.execute("ALTER TABLE config RENAME COLUMN hasbreak TO insertbreak");
+            else if (!columnExists(CXN, "config", "insertbreak"))
+                stmt.execute("ALTER TABLE config ADD COLUMN insertbreak INTEGER NOT NULL DEFAULT 0");
             if (!columnExists(CXN, "config", "breaktime"))
                 stmt.execute("ALTER TABLE config ADD COLUMN breaktime TIME");
         }
 
         try (PreparedStatement stmt = CXN.prepareStatement(
-                "INSERT OR IGNORE INTO config (id, breaklength, hotkey, hideatstart, wdsaturday, wdsunday, hasbreak, breaktime) VALUES (1, ?, ?, ?, ?, ?, ?, ?)")) {
+                "INSERT OR IGNORE INTO config (id, breaklength, hotkey, hideatstart, wdsaturday, wdsunday, insertbreak, breaktime) VALUES (1, ?, ?, ?, ?, ?, ?, ?)")) {
             stmt.setInt(1, Defaults.DEFAULT_BREAK_LENGTH);
             stmt.setInt(2, GlobalHotkey.DEFAULT_HOTKEY);
             stmt.setInt(3, Defaults.DEFAULT_HIDE_AT_START ? 1 : 0);
@@ -348,13 +355,13 @@ public class Database
         Registry Reg = Registry.get();
         Configuration Config = Reg.getConfig();
 
-        String sql = "SELECT hasbreak, breaktime, breaklength, hotkey, hideatstart, wdsaturday, wdsunday FROM config WHERE id = 1";
+        String sql = "SELECT insertbreak, breaktime, breaklength, hotkey, hideatstart, wdsaturday, wdsunday FROM config WHERE id = 1";
 
         try (Statement stmt = CXN.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
 
             if (rs.next()) {
-                Config.setHasBreak(rs.getInt("hasbreak") == 0 ? false : true);
+                Config.setHasBreak(rs.getInt("insertbreak") == 0 ? false : true);
                 Config.setBreakLength(rs.getInt("breaklength"));
                 Config.setHotkey(rs.getInt("hotkey"));
                 Config.setHideAtStart(rs.getInt("hideatstart") == 0 ? false : true);
@@ -385,11 +392,11 @@ public class Database
         Configuration Config = Reg.getConfig();
         
         if (Config.isDirty()) {
-            String sql = "INSERT INTO config (id, breaklength, hotkey, hideatstart, wdsaturday, wdsunday, hasbreak, breaktime) VALUES (1, ?, ?, ?, ?, ?, ?, ?) "
+            String sql = "INSERT INTO config (id, breaklength, hotkey, hideatstart, wdsaturday, wdsunday, insertbreak, breaktime) VALUES (1, ?, ?, ?, ?, ?, ?, ?) "
                        + "ON CONFLICT(id) DO UPDATE SET breaklength = excluded.breaklength, "
                        + "hotkey = excluded.hotkey, hideatstart = excluded.hideatstart, "
                        + "wdsaturday = excluded.wdsaturday, wdsunday = excluded.wdsunday, "
-                       + "hasbreak = excluded.hasbreak, breaktime = excluded.breaktime";
+                       + "insertbreak = excluded.insertbreak, breaktime = excluded.breaktime";
 
             try (PreparedStatement stmt = CXN.prepareStatement(sql)) {
                 stmt.setInt(1, Config.getBreakLength());
@@ -422,7 +429,7 @@ public class Database
     {
         Registry Reg = Registry.get();
 
-        String sql = "SELECT id, start, end FROM sessions ORDER BY id DESC LIMIT 1";
+        String sql = "SELECT id, start, end, hadbreak FROM sessions ORDER BY id DESC LIMIT 1";
 
         try (Statement stmt = CXN.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -431,7 +438,10 @@ public class Database
                 int id = rs.getInt("id");
                 LocalDateTime start = toLocalDateTime(rs.getLong("start"));
                 LocalDateTime end   = toLocalDateTime(rs.getLong("end"));
-                Reg.setSession(new Session(id, start, end));
+
+                Session session = new Session(id, start, end);
+                session.setBreak(rs.getInt("hadbreak") != 0);
+                Reg.setSession(session);
             }
         }
     }
@@ -459,15 +469,16 @@ public class Database
         int  id    = session.getID();
 
         String sql = (id != 0)
-                   ? "UPDATE sessions SET start = ?, end = ? WHERE id = ?"
-                   : "INSERT INTO sessions (start, end) VALUES (?, ?)";
+                   ? "UPDATE sessions SET start = ?, end = ?, hadbreak = ? WHERE id = ?"
+                   : "INSERT INTO sessions (start, end, hadbreak) VALUES (?, ?, ?)";
 
         try (PreparedStatement stmt = CXN.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             stmt.setLong(1, start);
             stmt.setLong(2, end);
+            stmt.setInt(3, session.hadBreak() ? 1 : 0);
 
             if (id != 0) {
-                stmt.setInt(3, id);
+                stmt.setInt(4, id);
                 stmt.executeUpdate();
             } else {
                 stmt.executeUpdate();

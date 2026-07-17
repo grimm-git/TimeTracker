@@ -20,7 +20,7 @@ package TimeTracker.gui;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -81,8 +81,9 @@ extends WindowFX
     // Tab View: Week
     @FXML  private TableView<Session> tableWeek;
     @FXML  private TableColumn<Session, String> colDay;
-    @FXML  private TableColumn<Session, LocalDateTime> colStart;
-    @FXML  private TableColumn<Session, LocalDateTime> colEnd;
+    @FXML  private TableColumn<Session, LocalDate> colDate;
+    @FXML  private TableColumn<Session, LocalTime> colStart;
+    @FXML  private TableColumn<Session, LocalTime> colEnd;
     @FXML  private TableColumn<Session, Duration> colDuration;
     @FXML  private TableColumn<Session, Duration> colWorkTime;
 
@@ -169,12 +170,16 @@ extends WindowFX
         colDay.setCellFactory(formatWeekDay);
         colDay.getStyleClass().add("column-align-left");
 
-        colStart.setCellValueFactory(new PropertyValueFactory<>("SessionStart"));
-        colStart.setCellFactory(formatDateTime);
+        colDate.setCellValueFactory(new PropertyValueFactory<>("StartDate"));
+        colDate.setCellFactory(formatDate);
+        colDate.getStyleClass().add("column-align-left");
+
+        colStart.setCellValueFactory(new PropertyValueFactory<>("StartTime"));
+        colStart.setCellFactory(formatTime);
         colStart.getStyleClass().add("column-align-left");
 
-        colEnd.setCellValueFactory(new PropertyValueFactory<>("SessionEnd"));
-        colEnd.setCellFactory(formatDateTime);
+        colEnd.setCellValueFactory(new PropertyValueFactory<>("EndTime"));
+        colEnd.setCellFactory(formatTime);
         colEnd.getStyleClass().add("column-align-left");
 
         colDuration.setCellValueFactory(new PropertyValueFactory<>("Duration"));
@@ -187,6 +192,7 @@ extends WindowFX
 
         colWorkTime.prefWidthProperty().bind(tableWeek.widthProperty()
                                     .subtract(colStart.widthProperty())
+                                    .subtract(colDate.widthProperty())
                                     .subtract(colEnd.widthProperty())
                                     .subtract(colDay.widthProperty())
                                     .subtract(colDuration.widthProperty())
@@ -509,17 +515,34 @@ extends WindowFX
             textSessionDay.getStyleClass().add("bankholiday");
     }
 
-    private Callback<TableColumn<Session, LocalDateTime>, TableCell<Session, LocalDateTime>> formatDateTime = (tableColumn) -> {
-        TableCell<Session, LocalDateTime> tableCell = new TableCell<>() {
+    private Callback<TableColumn<Session, LocalDate>, TableCell<Session, LocalDate>> formatDate = (tableColumn) -> {
+        TableCell<Session, LocalDate> tableCell = new TableCell<>() {
             @Override
-            protected void updateItem(LocalDateTime item, boolean empty) {
+            protected void updateItem(LocalDate item, boolean empty) {
                 super.updateItem(item, empty);
                 this.setText(null);
                 this.setGraphic(null);
 
                 if (empty || item == null) return;
 
-                DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd.MM.yyyy  HH:mm");
+                DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+                this.setText(item.format(fmt));
+            }
+        };
+        return tableCell;
+    };
+
+    private Callback<TableColumn<Session, LocalTime>, TableCell<Session, LocalTime>> formatTime = (tableColumn) -> {
+        TableCell<Session, LocalTime> tableCell = new TableCell<>() {
+            @Override
+            protected void updateItem(LocalTime item, boolean empty) {
+                super.updateItem(item, empty);
+                this.setText(null);
+                this.setGraphic(null);
+
+                if (empty || item == null) return;
+
+                DateTimeFormatter fmt = DateTimeFormatter.ofPattern("HH:mm");
                 this.setText(item.format(fmt));
             }
         };

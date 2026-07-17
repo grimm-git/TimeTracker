@@ -19,6 +19,7 @@ package TimeTracker;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.Locale;
 
 import TimeTracker.data.BankHolidays;
 import TimeTracker.data.Configuration;
@@ -74,7 +75,7 @@ public class Registry
         Config        = new Configuration();  // create configuration object with default values
         Holidays      = new BankHolidays();
         TrayIcon      = null;
-        I18N          = new Language();       // with Locale.Default();
+        I18N          = new Language();     // with Locale.Default();
     }
 
     /**

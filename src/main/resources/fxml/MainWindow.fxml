@@ -138,8 +138,9 @@
                         <TableView fx:id="tableWeek" prefHeight="250.0" prefWidth="500.0" VBox.vgrow="ALWAYS">
                           <columns>
                             <TableColumn fx:id="colDay" editable="false" minWidth="50.0" prefWidth="90.0" text="%table.day" />
-                            <TableColumn fx:id="colStart" editable="false" minWidth="50.0" prefWidth="120.0" text="%table.start" />
-                              <TableColumn fx:id="colEnd" editable="false" minWidth="50.0" prefWidth="120.0" text="%table.end" />
+                              <TableColumn fx:id="colDate" minWidth="75.0" prefWidth="100.0" text="%table.date" />
+                            <TableColumn fx:id="colStart" editable="false" minWidth="50.0" prefWidth="70.0" text="%table.start" />
+                              <TableColumn fx:id="colEnd" editable="false" minWidth="50.0" prefWidth="70.0" text="%table.end" />
                               <TableColumn fx:id="colDuration" editable="false" minWidth="50.0" prefWidth="75.0" text="%table.duration" />
                               <TableColumn fx:id="colWorkTime" editable="false" minWidth="50.0" prefWidth="75.0" text="%table.worktime" />
                           </columns>

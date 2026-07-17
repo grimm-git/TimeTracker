@@ -18,6 +18,7 @@
 package TimeTracker.data;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -34,6 +35,7 @@ public class Session
     private int           SessionID;
     private LocalDateTime SessionStart;
     private LocalDateTime SessionEnd;
+    private boolean       hadBreak;
 
     private final StringProperty Day = new SimpleStringProperty();
     private final StringProperty Date = new SimpleStringProperty();
@@ -45,6 +47,7 @@ public class Session
         SessionID    = 0;
         SessionStart = LocalDateTime.now();
         SessionEnd   = LocalDateTime.now();
+        hadBreak     = false;
 
         setProperties();
     }
@@ -87,6 +90,16 @@ public class Session
         return SessionEnd;
     }
 
+    public boolean hadBreak()
+    {
+        return hadBreak;
+    }
+
+    public void setBreak(boolean arg)
+    {
+        hadBreak = arg;
+    }
+
     public void setEndToNow()
     {
         SessionEnd = LocalDateTime.now();
@@ -96,6 +109,21 @@ public class Session
     public String getDayName()
     {
         return Day.get();
+    }
+
+    public LocalDate getStartDate()
+    {
+        return SessionStart.toLocalDate();
+    }
+
+    public LocalTime getStartTime()
+    {
+        return SessionStart.toLocalTime();
+    }
+
+    public LocalTime getEndTime()
+    {
+        return SessionEnd.toLocalTime();
     }
 
     /**
@@ -125,10 +153,8 @@ public class Session
 
         Duration duration = getDuration();
 
-        if (Config.hasBreak()) {
-            if (LocalTime.now().isAfter(Config.getBreakTime()))
-                return duration.minusMinutes(Config.getBreakLength());
-        }
+        if (hadBreak())
+            duration = duration.minusMinutes(Config.getBreakLength());
 
         return duration;
     }

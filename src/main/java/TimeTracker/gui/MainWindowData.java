@@ -17,15 +17,18 @@
 package TimeTracker.gui;
 
 import java.io.IOException;
+import java.io.ObjectInputFilter.Config;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 
 import TimeTracker.Defaults;
 import TimeTracker.Registry;
+import TimeTracker.data.Configuration;
 import TimeTracker.data.Database;
 import TimeTracker.data.Session;
 import TimeTracker.util.Language;
@@ -109,6 +112,7 @@ public class MainWindowData
     private void handleClockEvents()
     {
         Registry Reg = Registry.get();
+        Configuration Config = Reg.getConfig();
         Session session = Reg.getSession();
 
         session.setEndToNow();
@@ -116,6 +120,9 @@ public class MainWindowData
         Duration elapsed = Reg.getSession().getRunningTime();
         elapsedTime.set(String.format("%02d:%02d",
                     elapsed.toHours(), elapsed.toMinutesPart()));
+
+        if (Config.hasBreak() && LocalTime.now().isAfter(Config.getBreakTime()))
+            session.setBreak(true);   // a break has been inserted into the session
 
         try {
             Reg.getDBase().updateDatabase();

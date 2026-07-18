@@ -17,6 +17,7 @@ TimeTracker assumes that start a working day and ends it on the same day. Theref
 There is much more to say. It is not as feature-rich as FaJo's TimeTool, but will fulfill my use case.
 
 Have fun and enjoy
+
 Matthias
 
 

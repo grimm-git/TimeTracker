@@ -19,8 +19,9 @@ package TimeTracker;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.Properties;
+
+import TimeTracker.util.Language;
 
 /**
  *
@@ -129,10 +130,11 @@ public final class Defaults
 
     public static String getVersionString()
     {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-
+        Registry Reg = Registry.get();
+        Language i18n = Reg.getI18N();
+        
         return String.format("%d.%d%s (%s)",
-                APP_VERSION, APP_REVISION, APP_SUFFIX, APP_DATE.format(formatter));
+                APP_VERSION, APP_REVISION, APP_SUFFIX, i18n.localDate(APP_DATE));
     }
 
 }

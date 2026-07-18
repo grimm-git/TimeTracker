@@ -30,14 +30,13 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
-import java.util.Locale;
 
 import TimeTracker.Defaults;
 import TimeTracker.Registry;
 import TimeTracker.util.GlobalHotkey;
+import TimeTracker.util.Language;
 
 /**
  * Database manages the SQLite database that stores the recorded sessions.
@@ -165,8 +164,8 @@ public class Database
      */
     public void dumpAllSessions(Path filePath) throws SQLException, IOException
     {
-        DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-        DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("HH:mm");
+        Registry Reg = Registry.get();
+        Language i18n = Reg.getI18N();
 
         String sql = "SELECT id, start, end FROM sessions ORDER BY id DESC";
 
@@ -183,15 +182,14 @@ public class Database
                 LocalDateTime start = toLocalDateTime(rs.getLong("start"));
 
                 long endMillis = rs.getLong("end");
-                boolean finished = !rs.wasNull();
-                LocalDateTime end = finished ? toLocalDateTime(endMillis) : null;
+                LocalDateTime end = toLocalDateTime(endMillis);
 
                 String day      = start.getDayOfWeek()
-                                       .getDisplayName(TextStyle.FULL, Locale.getDefault());
-                String date     = start.format(dateFmt);
-                String startStr = start.format(timeFmt);
-                String endStr   = finished ? end.format(timeFmt) : "";
-                String duration = finished ? formatDuration(Duration.between(start, end)) : "";
+                                       .getDisplayName(TextStyle.FULL, i18n.locale());
+                String date     = i18n.localDate(start.toLocalDate());
+                String startStr = i18n.localTime(start.toLocalTime());
+                String endStr   = i18n.localTime(end.toLocalTime());
+                String duration = formatDuration(Duration.between(start, end));
 
                 writer.write(csv(String.valueOf(id))
                            + "," + csv(day)

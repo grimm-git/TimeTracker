@@ -25,7 +25,6 @@ import java.text.ParseException;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.util.function.UnaryOperator;
 
 import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
@@ -265,8 +264,8 @@ extends WindowFX
 
         if (ev.getSource() == btnHide) hide();
         if (ev.getSource() == btnLearnHotkey) learnHotkey();
-        if (ev.getSource() == cfgBreakTime) cfgBreakLength.requestFocus();  //saveBreakTime();
-        if (ev.getSource() == cfgBreakLength) cfgBreakTime.requestFocus();  //saveBreakLength();
+        if (ev.getSource() == cfgBreakTime) cfgBreakLength.requestFocus();
+        if (ev.getSource() == cfgBreakLength) cfgBreakTime.requestFocus();
         if (ev.getSource() == checkHideAtStart) saveOption(0);
         if (ev.getSource() == checkWDSaturday) saveOption(1);
         if (ev.getSource() == checkWDSunday) saveOption( 2);
@@ -532,9 +531,10 @@ extends WindowFX
                 this.setGraphic(null);
 
                 if (empty || item == null) return;
-
-                DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-                this.setText(item.format(fmt));
+                    
+                Registry Reg = Registry.get();
+                Language i18n = Reg.getI18N();
+                this.setText(i18n.localDate(item));
             }
         };
         return tableCell;
@@ -550,8 +550,9 @@ extends WindowFX
 
                 if (empty || item == null) return;
 
-                DateTimeFormatter fmt = DateTimeFormatter.ofPattern("HH:mm");
-                this.setText(item.format(fmt));
+                Registry Reg = Registry.get();
+                Language i18n = Reg.getI18N();
+                this.setText(i18n.localTime(item));
             }
         };
         return tableCell;

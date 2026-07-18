@@ -21,12 +21,11 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
-import java.util.Locale;
 
 import TimeTracker.Defaults;
 import TimeTracker.Registry;
+import TimeTracker.util.Language;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 
@@ -185,17 +184,19 @@ public class Session
 
     private void setProperties()
     {
-        // Sets the day of week of the session start date as a short name,
-        //  e.g. "Mon", "Tue", "Wed".
+        Registry Reg = Registry.get();
+        Language i18n  = Reg.getI18N();
+        
+        // Sets the localized day of week of the session start date as a short name,
         Day.set(SessionStart.getDayOfWeek()
-                .getDisplayName(TextStyle.FULL, Locale.getDefault()));
+                .getDisplayName(TextStyle.FULL, i18n.locale()));
 
-        DateTimeFormatter fmt1 = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-        Date.set(SessionStart.format(fmt1));
+        // Sets the localized date of the session start
+        Date.set(i18n.localDate(SessionStart.toLocalDate()));
 
-        DateTimeFormatter fmt2 = DateTimeFormatter.ofPattern("HH:mm");
-        Start.set(SessionStart.format(fmt2));
-        End.set(SessionEnd.format(fmt2));
+        // Sets the localized start end ent time of the session
+        Start.set(i18n.localTime(SessionStart.toLocalTime()));
+        End.set(i18n.localTime(SessionEnd.toLocalTime()));
     }
 
     // -------------------------------------------------------------------------------- 

@@ -106,9 +106,9 @@
             <Label text="%main.session" />
             <TextField fx:id="textSessionDay" alignment="CENTER" editable="false" focusTraversable="false" prefWidth="90.0" promptText="Montag" />
             <TextField fx:id="textSessionDate" alignment="CENTER" editable="false" focusTraversable="false" prefWidth="100.0" promptText="01.01.2000" />
-            <TextField fx:id="textSessionStart" alignment="CENTER" editable="false" focusTraversable="false" prefWidth="70.0" promptText="HH:MM" />
+            <TextField fx:id="textSessionStart" alignment="CENTER" editable="false" focusTraversable="false" prefWidth="80.0" promptText="HH:MM" />
             <Line endX="5.0" startX="-5.0" />
-            <TextField fx:id="textSessionEnd" alignment="CENTER" focusTraversable="false" prefWidth="70.0" promptText="HH:MM" />
+            <TextField fx:id="textSessionEnd" alignment="CENTER" focusTraversable="false" prefWidth="80.0" promptText="HH:MM" />
             <VBox alignment="CENTER" HBox.hgrow="ALWAYS">
                <children>
                   <Line endX="5.0" startX="-5.0">
@@ -135,12 +135,12 @@
                <content>
                   <VBox>
                      <children>
-                        <TableView fx:id="tableWeek" prefHeight="250.0" prefWidth="500.0" VBox.vgrow="ALWAYS">
+                        <TableView fx:id="tableWeek" prefHeight="250.0" prefWidth="600.0" VBox.vgrow="ALWAYS">
                           <columns>
                             <TableColumn fx:id="colDay" editable="false" minWidth="50.0" prefWidth="90.0" text="%table.day" />
                               <TableColumn fx:id="colDate" minWidth="75.0" prefWidth="100.0" text="%table.date" />
-                            <TableColumn fx:id="colStart" editable="false" minWidth="50.0" prefWidth="70.0" text="%table.start" />
-                              <TableColumn fx:id="colEnd" editable="false" minWidth="50.0" prefWidth="70.0" text="%table.end" />
+                            <TableColumn fx:id="colStart" editable="false" minWidth="50.0" text="%table.start" />
+                              <TableColumn fx:id="colEnd" editable="false" minWidth="50.0" text="%table.end" />
                               <TableColumn fx:id="colDuration" editable="false" minWidth="50.0" prefWidth="75.0" text="%table.duration" />
                               <TableColumn fx:id="colWorkTime" editable="false" minWidth="50.0" prefWidth="75.0" text="%table.worktime" />
                           </columns>

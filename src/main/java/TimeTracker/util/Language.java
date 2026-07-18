@@ -17,6 +17,10 @@
 package TimeTracker.util;
 
 import java.text.MessageFormat;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.util.Locale;
 import java.util.ResourceBundle;
 
@@ -33,7 +37,15 @@ public class Language
     public Language(Locale arg)
     {
         locale = arg;
-        messages = ResourceBundle.getBundle("languages.messages", locale);
+        ResourceBundle bundle = ResourceBundle.getBundle("languages.messages", locale);
+
+        // Make sure that Locale.Default does not come into way, if the requested translation
+        // is not available. English is the generic fallback for any untranslated language
+        String loaded = bundle.getLocale().getLanguage();
+        if (!loaded.isEmpty() && !loaded.equals(locale.getLanguage())) {
+            bundle = ResourceBundle.getBundle("languages.messages", Locale.ROOT);
+        }
+        messages = bundle;
     }
 
     public Locale locale()
@@ -44,6 +56,16 @@ public class Language
     public ResourceBundle bundle()
     {
         return messages;
+    }
+
+    public String localDate(LocalDate date)
+    {
+        return DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale).format(date);
+    }
+
+    public String localTime(LocalTime time)
+    {
+        return DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale).format(time);
     }
 
     public String msg(String key, Object... params) {
